@@ -153,7 +153,7 @@ Route::post('/verify-login-otp', function () {
     $request = request()->validate([
         'otp' => 'required|string',
     ]);
-// gdfm,h,f,
+
     $storedOtp = session('login_otp');
     $userId = session('login_user_id');
 
