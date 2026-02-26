@@ -1,0 +1,275 @@
+/* ===============================
+   WOMEN PAGE (NEW ARRIVALS image style)
+   =============================== */
+
+html, body { max-width: 100%; overflow-x: hidden; }
+.womens-page { background: #fff; }
+.womens-wrap { background: #fff; }
+
+/* HERO */
+.womens-hero{
+  position:relative;
+  min-height: clamp(48vh, 62vh, 72vh);
+  background-image:
+    linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4)),
+    url('https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=2070&q=80');
+  background-size:cover;
+  background-position:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  padding: min(6vh, 64px) 16px;
+}
+.hero-overlay{ text-align:center; color:#fff; z-index:3; max-width:min(820px,92vw) }
+.hero-wave{
+  position:absolute; left:0; bottom:-1px;
+  width:100%; height:110px; z-index:2;
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-position:bottom center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120'%3E%3Cpath fill='%23ffffff' d='M0,64 C240,128 480,0 720,64 C960,128 1200,32 1440,72 L1440,120 L0,120 Z'/%3E%3C/svg%3E");
+}
+.hero-overlay h1{
+  font-size: clamp(28px, 5vw, 56px);
+  font-weight:800;
+  margin:0 0 10px;
+  text-shadow:2px 2px 4px rgba(0,0,0,.5);
+}
+.hero-overlay p{
+  font-size: clamp(14px, 2.4vw, 18px);
+  margin:0 0 18px;
+  text-shadow:1px 1px 2px rgba(0,0,0,.5);
+}
+.hero-buttons{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+.hero-btn{
+  background:#e94444;
+  color:#fff;
+  border:none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight:800;
+  border-radius:999px;
+  cursor:pointer;
+}
+.hero-btn.secondary{ background:#e94444; opacity:.92; }
+
+/* MAIN LAYOUT */
+.womens-container{
+  width: min(1320px, 94vw);
+  margin: 0 auto;
+  padding: 22px 10px 60px;
+  display:grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 18px;
+}
+.womens-sidebar{ position: sticky; top: 16px; height: fit-content; }
+.womens-main{ min-width:0; }
+
+/* Sidebar */
+.sidebar-card{
+  background:#fff;
+  border:1px solid #e9e9e9;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.sidebar-title{
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  margin: 0 0 12px;
+}
+.subcategory-list{ list-style:none; padding:0; margin:0; }
+.subcategory-list li{ border-bottom:1px solid #efefef; }
+.subcategory-list li:last-child{ border-bottom:0; }
+.subcategory-list li.active .subcategory-btn{ font-weight: 900; }
+.subcategory-btn{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 10px 4px;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+.subcategory-count{ font-size: 12px; color:#666; font-weight:700; }
+
+.price-box{ display:flex; flex-direction:column; gap:10px; }
+.price-display{ font-size:12px; font-weight:700; color:#333; }
+.price-slider{ width:100%; }
+.price-filter-btn{
+  height: 38px;
+  border:1px solid #dcdcdc;
+  background:#f7f7f7;
+  font-weight: 800;
+  font-size: 12px;
+  cursor:pointer;
+}
+.sort-select{
+  width:100%;
+  height: 40px;
+  border:1px solid #dcdcdc;
+  background:#fff;
+  font-weight:700;
+  padding: 0 10px;
+}
+
+.mobile-filter-toggle{ display:none; }
+.filter-toggle-btn{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid #e0e0e0;
+  background:#fff;
+  border-radius:8px;
+  font-weight:900;
+}
+
+/* NEW ARRIVALS heading */
+.nm-head{
+  padding: 6px 0 18px;
+  text-align: center;
+}
+.nm-title{
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: .18em;
+}
+
+/* GRID */
+#productsGrid.nm-grid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 34px;
+  align-items:start;
+}
+
+/* CARD */
+.nm-card{
+  background:#fff;
+  border: 0;
+  overflow: hidden;
+  cursor:pointer;
+}
+.nm-imgWrap{ position:relative; background:#f6f6f6; }
+.nm-img{
+  width:100%;
+  display:block;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.nm-wish{
+  position:absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid #dcdcdc;
+  background: #fff;
+  font-size: 18px;
+  cursor:pointer;
+  line-height: 1;
+}
+
+.nm-soldout{
+  position:absolute;
+  top: 12px;
+  left: 12px;
+  background:#111;
+  color:#fff;
+  font-weight: 900;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  letter-spacing:.06em;
+}
+
+.nm-info{
+  padding: 12px 6px 10px; /* little bottom space */
+  text-align:center;
+}
+
+.nm-name{
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nm-priceRow{
+  margin-top: 10px;
+  display:flex;
+  justify-content:center;
+  gap: 10px;
+  align-items:baseline;
+}
+
+.nm-price{ font-size: 12px; font-weight: 900; }
+.nm-oprice{ font-size: 12px; color:#888; text-decoration: line-through; font-weight:800; }
+
+/* ✅ Safety: hide actions if any old HTML remains */
+.nm-actions{ display:none !important; }
+
+.nm-empty{ padding: 30px 0; text-align:center; color:#777; }
+
+/* Responsive */
+@media (max-width: 1200px){
+  #productsGrid.nm-grid{ grid-template-columns: repeat(3, minmax(0,1fr)); gap: 26px; }
+}
+@media (max-width: 992px){
+  .womens-container{ grid-template-columns:1fr; }
+  .mobile-filter-toggle{ display:block; margin: 16px auto 0; width: min(1320px, 94vw); }
+  .womens-sidebar{ display:none; position:static; }
+  .womens-sidebar.show{ display:block; }
+  #productsGrid.nm-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 540px){
+  #productsGrid.nm-grid{ grid-template-columns: 1fr; }
+}
+/* ===== Search page small hero override ===== */
+.womens-hero--small{
+  min-height: 220px !important;
+}
+
+/* sidebar search row */
+.sb-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.sb-query{
+  font-weight:700;
+  text-transform:capitalize;
+}
+.sb-count{
+  font-size:12px;
+  color:#666;
+}
+
+/* badge (if you use product->badge) */
+.nm-badge{
+  position:absolute;
+  top: 12px;
+  right: 12px;
+  background:#fff;
+  border:1px solid #ddd;
+  color:#111;
+  font-weight:900;
+  font-size:11px;
+  padding:6px 10px;
+  border-radius:999px;
+  letter-spacing:.05em;
+}
+
+/* safety: remove old buttons if any remain */
+.nm-actions{ display:none !important; }

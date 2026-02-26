@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Product;
+use App\Models\Offer;
+use Illuminate\Http\Exceptions\HttpResponseException;
+
+class HomeController extends Controller
+{
+    public function index(Request $request)
+    {
+        // Handle referral tracking
+        $referralCode = $request->query('ref');
+        if ($referralCode) {
+            // Store the referral in session to track the user
+            session(['referral_code' => $referralCode]);
+            
+            // Optional: Log referral visits for analytics
+            // You could create a Referral model to track these
+        }
+        
+        // Fetch all products from the database
+        $products = Product::orderBy('id', 'desc')->get();
+        
+        // Fetch trendy products for the trendy section
+        $trendyProducts = Product::where('status', 'active')
+            ->whereNotNull('trend_type')
+            ->orderByRaw("CASE 
+                WHEN trend_type = 'best-seller' THEN 1
+                WHEN trend_type = 'hot-trend' THEN 2
+                WHEN trend_type = 'featured' THEN 3
+                ELSE 4
+            END")
+            ->limit(8) // Limit to 8 products to avoid too many on home page
+            ->get();
+        
+        // Fetch active offers for the offers section
+        try {
+            $offers = \App\Models\Offer::where('active', true)->get();
+        } catch (\Exception $e) {
+            // If offers table doesn't exist, return empty collection
+            $offers = collect();
+        }
+        
+        // For now, just returning the view
+        // Later you can pass any data needed for the hero section
+        return view('index', compact('products', 'trendyProducts', 'offers'));
+    }
+    
+    public function products()
+    {
+        // Fetch all products from the database
+        $products = Product::orderBy('id', 'desc')->get();
+        
+        // Return the products view with the products data
+        return view('products', compact('products'));
+    }
+    
+    public function shop(Request $request)
+    {
+        $query = $request->input('search');
+        
+        if ($query) {
+            $products = Product::where('name', 'LIKE', "%{$query}%")
+                           ->orWhere('category', 'LIKE', "%{$query}%")
+                           ->orWhere('subcategory', 'LIKE', "%{$query}%")
+                           ->orderBy('id', 'desc')
+                           ->get();
+        } else {
+            $products = Product::orderBy('id', 'desc')->get();
+        }
+        
+        return view('shop', compact('products'));
+    }
+    
+    public function trendy()
+    {
+        $trendyProducts = Product::where('status', 'active')
+            ->whereNotNull('trend_type')
+            ->orderByRaw("CASE 
+                WHEN trend_type = 'best-seller' THEN 1
+                WHEN trend_type = 'hot-trend' THEN 2
+                WHEN trend_type = 'featured' THEN 3
+                ELSE 4
+            END")
+            ->get();
+        return view('trendy', compact('trendyProducts'));
+    }
+    
+    public function show($id)
+    {
+        // Fetch the specific product by ID
+        $product = Product::findOrFail($id);
+        
+        // Prepare size prices data for the view
+        $sizePrices = [];
+        if ($product->size_prices && is_array($product->size_prices)) {
+            $sizePrices = $product->size_prices;
+        } elseif (is_string($product->size_prices)) {
+            $sizePrices = json_decode($product->size_prices, true) ?: [];
+        }
+        
+        // Return the product details view with the product data
+        return view('product-details', compact('product', 'sizePrices'));
+    }
+    
+    public function women()\n    {\n         = Product::where(" category\, \like\, \%women%\)\n ->orWhere(\category\, \like\, \%Women%\)\n ->orWhere(\category\, \like\, \%WOMEN%\)\n ->orderBy(\id\, \desc\)\n ->get();\n \n = \App\Models\Category::all();\n \n return view(\women\, compact(\products\, \categories\));\n }
+    
+    public function kids()
+    {
+        $products = Product::where('category', 'like', '%kids%')
+            ->orWhere('category', 'like', '%Kids%')
+            ->orWhere('category', 'like', '%KIDS%')
+            ->orderBy('id', 'desc')
+            ->get();
+        
+        return view('kids', compact('products'));
+    }
+    
+    public function mens()
+    {
+        $products = Product::where('category', 'like', '%men%')
+            ->orWhere('category', 'like', '%Men%')
+            ->orWhere('category', 'like', '%MEN%')
+            ->orderBy('id', 'desc')
+            ->get();
+        
+        return view('mens', compact('products'));
+    }
+  
+}

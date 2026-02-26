@@ -1,0 +1,281 @@
+@extends('layout.master')
+
+@section('body')
+<div class="womens-page">
+
+  <!-- HERO -->
+  <section class="womens-hero">
+    <div class="hero-overlay">
+      <h1>Women's Fashion Collection</h1>
+      <p>Trendy, elegant, and comfortable styles curated just for you</p>
+
+      <div class="hero-buttons">
+        <button class="hero-btn" id="shopNowBtn">Shop Now</button>
+        <button class="hero-btn secondary" id="newArrivalsBtn">New Arrivals</button>
+      </div>
+    </div>
+
+    <!-- ✅ WAVE CURVE (like 1st image) -->
+    <div class="hero-wave" aria-hidden="true"></div>
+  </section>
+
+  <div class="womens-container">
+
+    <!-- Mobile filter toggle -->
+    <div class="mobile-filter-toggle">
+      <button class="filter-toggle-btn" id="filterToggleBtn">Show Filters</button>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="womens-sidebar" id="sidebar">
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">CATEGORIES</h3>
+        <ul class="subcategory-list underline-style" id="subcategoryList"></ul>
+      </div>
+
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">FILTER BY PRICE</h3>
+
+        <div class="price-box">
+          <div class="price-display" id="priceDisplay">Price: ₹0 - ₹100000</div>
+
+          <input
+            type="range"
+            min="0"
+            max="100000"
+            value="100000"
+            id="priceSlider"
+            class="price-slider"
+          />
+
+          <button type="button" class="price-filter-btn" id="priceFilterBtn">FILTER</button>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">SORT BY</h3>
+        <select class="sort-select" id="sortSelect">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="price-low">Price: Low to High</option>
+          <option value="price-high">Price: High to Low</option>
+          <option value="rating">Rating</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="womens-main" id="womensMain">
+
+      <div class="products-header">
+        <h2 id="productsTitle">Women's Products ({{ count($products) }})</h2>
+      </div>
+
+      <div class="products-grid" id="productsGrid">
+        @foreach($products as $product)
+          @php
+            $subcat = !empty($product->subcategory) ? strtolower(trim($product->subcategory)) : 'uncategorized';
+
+            $imgUrl = null;
+            if (!empty($product->image)) {
+              $imgUrl = \Illuminate\Support\Facades\Storage::url($product->image);
+            }
+            $finalImg = $imgUrl ?: 'https://placehold.co/600x600?text=No+Image';
+          @endphp
+
+          <article class="product-card"
+            data-category="womens"
+            data-subcategory="{{ $subcat }}"
+            data-id="{{ $product->id }}"
+            data-name="{{ e($product->name) }}"
+            data-price="{{ (float)($product->price ?? 0) }}"
+            data-image="{{ $finalImg }}"
+          >
+            <a href="/product/{{ $product->id }}" class="product-link">
+
+              <div class="product-img">
+                <img
+                  src="{{ $finalImg }}"
+                  alt="{{ $product->name }}"
+                  loading="lazy"
+                  onerror="this.onerror=null;this.src='https://placehold.co/600x600?text=No+Image';"
+                />
+              </div>
+
+              <div class="product-meta">
+                <h3 class="product-name" title="{{ $product->name }}">{{ $product->name }}</h3>
+                <div class="product-price">₹{{ number_format((float)($product->price ?? 0), 2) }}</div>
+              </div>
+
+            </a>
+          </article>
+        @endforeach
+
+        @if(count($products) == 0)
+          <p class="no-products">No women's products found.</p>
+        @endif
+      </div>
+
+      <p class="no-products" id="noProducts" style="display:none;">No women's products found.</p>
+    </main>
+
+  </div>
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const productsGrid = document.getElementById("productsGrid");
+  const productsTitle = document.getElementById("productsTitle");
+  const noProducts = document.getElementById("noProducts");
+
+  const subcategoryList = document.getElementById("subcategoryList");
+  const priceSlider = document.getElementById("priceSlider");
+  const priceDisplay = document.getElementById("priceDisplay");
+  const sortSelect = document.getElementById("sortSelect");
+
+  const filterToggleBtn = document.getElementById("filterToggleBtn");
+  const sidebar = document.getElementById("sidebar");
+
+  const shopNowBtn = document.getElementById("shopNowBtn");
+  const newArrivalsBtn = document.getElementById("newArrivalsBtn");
+
+  if (filterToggleBtn && sidebar) {
+    filterToggleBtn.addEventListener("click", function () {
+      sidebar.classList.toggle("show");
+      filterToggleBtn.textContent = sidebar.classList.contains("show") ? "Hide Filters" : "Show Filters";
+    });
+  }
+
+  const cards = Array.from(document.querySelectorAll(".product-card"));
+
+  function getSubcategoryCounts() {
+    const counts = { all: cards.length };
+    cards.forEach(c => {
+      const subcat = (c.dataset.subcategory || "uncategorized").toLowerCase();
+      counts[subcat] = (counts[subcat] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function renderCategories() {
+    if (!subcategoryList) return;
+
+    const counts = getSubcategoryCounts();
+    const allSubcats = Object.keys(counts)
+      .filter(k => !["all", "uncategorized"].includes(k))
+      .sort();
+
+    const order = ["all", ...allSubcats];
+
+    subcategoryList.innerHTML = order
+      .filter(k => counts[k] && counts[k] > 0)
+      .map((k, i) => {
+        const label = (k === "all") ? "Women" : (k.charAt(0).toUpperCase() + k.slice(1));
+        const active = (i === 0) ? "active" : "";
+        return `
+          <li class="${active}" data-filter="${k}">
+            <button type="button" class="subcategory-btn">
+              <span>${label}</span>
+              <span class="subcategory-count">${counts[k]}</span>
+            </button>
+          </li>
+        `;
+      }).join("");
+  }
+
+  let activeSubcategory = "all";
+  let maxPrice = parseFloat(priceSlider?.value || 100000);
+  let activeSort = sortSelect?.value || "newest";
+
+  function applyFilters() {
+    const filtered = cards.filter(card => {
+      const subcat = (card.dataset.subcategory || "uncategorized").toLowerCase();
+      const price = parseFloat(card.dataset.price || 0);
+
+      const subcatOk = (activeSubcategory === "all") ? true : (subcat === activeSubcategory);
+      const priceOk = price <= maxPrice;
+      return subcatOk && priceOk;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      const pa = parseFloat(a.dataset.price || 0);
+      const pb = parseFloat(b.dataset.price || 0);
+      const ida = parseInt(a.dataset.id || 0, 10);
+      const idb = parseInt(b.dataset.id || 0, 10);
+
+      if (activeSort === "price-low") return pa - pb;
+      if (activeSort === "price-high") return pb - pa;
+      if (activeSort === "oldest") return ida - idb;
+      if (activeSort === "rating") return 0;
+      return idb - ida;
+    });
+
+    cards.forEach(c => (c.style.display = "none"));
+    sorted.forEach(c => {
+      c.style.display = "";
+      productsGrid.appendChild(c);
+    });
+
+    const count = sorted.length;
+    if (productsTitle) productsTitle.textContent = `Women's Products (${count})`;
+    if (noProducts) noProducts.style.display = count === 0 ? "block" : "none";
+  }
+
+  document.addEventListener("click", function(e) {
+    const li = e.target.closest("#subcategoryList li");
+    if (!li) return;
+
+    activeSubcategory = (li.dataset.filter || "all").toLowerCase();
+
+    document.querySelectorAll("#subcategoryList li").forEach(x => x.classList.remove("active"));
+    li.classList.add("active");
+
+    applyFilters();
+  });
+
+  const priceFilterBtn = document.getElementById("priceFilterBtn");
+  if (priceSlider && priceDisplay) {
+    const updatePrice = () => {
+      maxPrice = parseFloat(priceSlider.value || 100000);
+      priceDisplay.textContent = `Price: ₹0 - ₹${maxPrice}`;
+    };
+    priceSlider.addEventListener("input", updatePrice);
+    updatePrice();
+  }
+  if (priceFilterBtn) {
+    priceFilterBtn.addEventListener("click", function(){
+      applyFilters();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", function() {
+      activeSort = sortSelect.value;
+      applyFilters();
+    });
+  }
+
+  if (shopNowBtn) {
+    shopNowBtn.addEventListener("click", function() {
+      document.getElementById("productsGrid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  if (newArrivalsBtn) {
+    newArrivalsBtn.addEventListener("click", function() {
+      if (sortSelect) sortSelect.value = "newest";
+      activeSort = "newest";
+      applyFilters();
+      document.getElementById("productsGrid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  renderCategories();
+  applyFilters();
+});
+</script>
+
+
+@include('footer')
+@endsection

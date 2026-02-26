@@ -1,0 +1,33 @@
+
+        :root {
+            --primary-color: #4f46e5;
+            --sidebar-bg: #1e293b;
+            --header-bg: #ffffff;
+            --hover-color: #4338ca;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar:hover {
+            width: 240px;
+        }
+        
+        .sidebar-item:hover {
+            background-color: var(--hover-color);
+            transform: translateX(5px);
+        }
+        
+        .stat-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        
