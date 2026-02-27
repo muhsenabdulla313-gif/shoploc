@@ -25,7 +25,8 @@ use App\Http\Controllers\ReferralController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/hero', function () {
-    return view('hero'); });
+    return view('hero');
+});
 Route::get('/products', [HomeController::class, 'products'])->name('products');
 Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
 Route::get('/trendy', [HomeController::class, 'trendy'])->name('trendy');
@@ -35,16 +36,21 @@ Route::get('/womens', [HomeController::class, 'women'])->name('women.page');
 Route::get('/mens', [HomeController::class, 'mens'])->name('men.page');
 Route::get('/kids', [HomeController::class, 'kids'])->name('kids.page');
 Route::get('/cart', function () {
-    return view('cart'); })->name('cart')->middleware('auth');
+    return view('cart');
+})->name('cart')->middleware('auth');
 Route::get('/wishlist', function () {
-    return view('wishlist'); })->name('wishlist')->middleware('auth');
+    return view('wishlist');
+})->name('wishlist')->middleware('auth');
 Route::get('/api/products/related/{category}/{excludeId}', [ProductController::class, 'getRelatedProducts'])->name('products.related');
 Route::get('/checkout', function () {
-    return view('checkout'); })->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
+    return view('checkout');
+})->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
 Route::get('/payment', function () {
-    return view('payment'); })->name('payment');
+    return view('payment');
+})->name('payment');
 Route::get('/contact', function () {
-    return view('contact'); })->name('contact');
+    return view('contact');
+})->name('contact');
 Route::post('/contact/submit', [HomeController::class, 'contact'])->name('contact.submit');
 
 
@@ -66,7 +72,8 @@ Route::post('/contact/submit', [HomeController::class, 'contact'])->name('contac
 
 Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('login');
 Route::post('/user-login', [UserLoginController::class, 'login'])->name('user.login.submit');
-Route::get('/register', function () {return view('auth.register');})->name('register');
+Route::get('/register', function () {
+    return view('auth.register'); })->name('register');
 Route::post('/register/submit', [UserLoginController::class, 'register'])->name('register.submit');
 Route::get('/verify-otp', [UserLoginController::class, 'verifyotp'])->name('verify.otp.form');
 Route::post('/verify-otp/submit', [UserLoginController::class, 'otpsubmit'])->name('user.otp.submit');
@@ -139,52 +146,16 @@ Route::middleware(['web', 'App\Http\Middleware\StaffAuth'])->group(function () {
 // });
 
 Route::get('/admin/login', [AdminController::class, 'login'])->name('admin.login');
+Route::post('/admin/login', [AdminController::class, 'authenticate'])->name('admin.login.submit');
 
 
-
-
-
-
-// Admin Login Submit
-Route::post('/admin/login', function () {
-
-    $credentials = request()->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
-
-    if (auth()->guard('admin')->attempt($credentials)) {
-        request()->session()->regenerate();
-        return redirect()->route('admin.dashboard');
-    }
-
-    return back()->withErrors([
-        'email' => 'Invalid admin credentials',
-    ])->onlyInput('email');
-})->name('admin.login.submit');
-// PROTECTED ADMIN ROUTES
 Route::middleware('auth:admin')->group(function () {
-    Route::get('/admin/dashboard', function () {
-        $totalProducts = \App\Models\Product::count();
-        $totalUsers = \App\Models\User::count();
-        $pendingOrders = \App\Models\Order::where('status', 'pending')->count();
-        $recentOrders = \App\Models\Order::with('items')->latest()->limit(5)->get();
 
-        $topSellingProducts = \App\Models\OrderItem::leftJoin('products', 'order_items.product_id', '=', 'products.id')
-            ->selectRaw('order_items.product_name, products.badge, SUM(order_items.quantity) as total_quantity')
-            ->groupBy('order_items.product_name', 'products.badge')
-            ->orderByDesc('total_quantity')
-            ->limit(5)
-            ->get();
+Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
-        return view('admin.dashboard', compact(
-            'totalProducts',
-            'totalUsers',
-            'pendingOrders',
-            'recentOrders',
-            'topSellingProducts'
-        ));
-    })->name('admin.dashboard');
+
+
+    
 });
 
 
