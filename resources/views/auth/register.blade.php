@@ -44,7 +44,7 @@
                             <p class="auth-sub">Create your account to continue.</p>
                         </div>
 
-                        <form method="POST" action="{{ route('register') }}" class="auth-form">
+                        <form method="POST" action="{{ route('register.submit') }}" class="auth-form">
                             @csrf
 
                             <div class="form-group">

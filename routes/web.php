@@ -3,608 +3,147 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Pagination\LengthAwarePaginator;
-
+use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReferralController;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\ContactMail;
 
-/*
-|--------------------------------------------------------------------------
-| Authentication Routes (Custom)
-|--------------------------------------------------------------------------
-*/
 
-// Login Page
-Route::get('/login', [App\Http\Controllers\Auth\UserLoginController::class, 'showLoginForm'])->name('login');
 
-// User Login Submit
-Route::post('/user-login', [App\Http\Controllers\Auth\UserLoginController::class, 'login'])->name('user.login.submit');
 
-// Register Page
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
 
-// Register Submit
-Route::post('/register', function () {
-    $validated = request()->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email',
-    ]);
 
-    // Check if user already exists (double-check)
-    $existingUser = \App\Models\User::where('email', $validated['email'])->first();
 
-    if ($existingUser) {
-        return redirect('/login')->with('error', 'An account with this email already exists. Please login instead.');
-    }
-
-    // Generate OTP
-    $otp = rand(100000, 999999);
-
-    // Store OTP in session
-    session(['registration_otp' => $otp, 'registration_data' => $validated]);
-
-    // Send OTP email
-    Mail::to($validated['email'])->send(new \App\Mail\OtpMail($validated['name'], $validated['email'], $otp));
-
-    return redirect()->route('verify.otp.form')->with('success', 'Please check your email for the OTP to complete registration.');
-});
-
-// Show Registration OTP verification form
-Route::get('/verify-otp', function () {
-    if (!session('registration_data')) {
-        return redirect('/register')->with('error', 'Please register first');
-    }
-
-    return view('auth.verify-otp');
-})->name('verify.otp.form');
-
-// Verify Registration OTP and complete registration
-Route::post('/verify-otp', function () {
-    $request = request()->validate([
-        'otp' => 'required|string',
-    ]);
-
-    $storedOtp = session('registration_otp');
-    $registrationData = session('registration_data');
-
-    if (!$storedOtp || !$registrationData) {
-        return redirect('/register')->with('error', 'Session expired. Please register again.');
-    }
-
-    if ($request['otp'] != $storedOtp) {
-        return back()->with('error', 'Invalid OTP. Please try again.');
-    }
-
-    // ✅ Check if user already exists
-    $existingUser = \App\Models\User::where('email', $registrationData['email'])->first();
-
-    if ($existingUser) {
-        // User already exists, log them in instead of creating new user
-        Auth::login($existingUser);
-
-        // Clear OTP session
-        session()->forget(['registration_otp', 'registration_data']);
-
-        return redirect('/')->with('success', 'Welcome back! You have been logged in.');
-    }
-
-    // ✅ Create new user
-    $user = \App\Models\User::create([
-        'name' => $registrationData['name'],
-        'email' => $registrationData['email'],
-        'password' => Hash::make(Str::random(12)),
-        'referral_code' => Str::random(10),
-        'email_verified' => true,
-    ]);
-
-    // ✅ Staff referral tracking (FIXED)
-    $referralCode = session('referral_code') ?? request()->cookie('referral_code');
-
-    if ($referralCode) {
-        $referringStaff = \App\Models\Staff::where('referral_code', $referralCode)
-            ->where('is_active', true)
-            ->first();
-
-        if ($referringStaff) {
-            \App\Models\ReferralTracking::create([
-                'staff_id' => $referringStaff->id,
-                'referral_code' => $referralCode,
-                'referral_type' => 'signup',
-                'referred_user_email' => $user->email,
-                'used_at' => now(),
-            ]);
-
-            // ✅ also store in user (recommended)
-            $user->referred_by_staff_id = $referringStaff->id;
-            $user->referred_by_code = $referralCode;
-            $user->save();
-        }
-    }
-
-    // ✅ Clear OTP session
-    session()->forget(['registration_otp', 'registration_data']);
-
-    Auth::login($user);
-
-    return redirect('/')->with('success', 'Registration successful!');
-});
-
-// Show Login OTP verification form
-Route::get('/verify-login-otp', function () {
-    if (!session('login_user_id')) {
-        return redirect('/')->with('error', 'Session expired. Please try again.');
-    }
-
-    return view('auth.verify-login-otp');
-})->name('verify.login.otp.form');
-
-// Verify Login OTP and complete login
-Route::post('/verify-login-otp', function () {
-    $request = request()->validate([
-        'otp' => 'required|string',
-    ]);
-
-    $storedOtp = session('login_otp');
-    $userId = session('login_user_id');
-
-    if (!$storedOtp || !$userId) {
-        return redirect('/')->with('error', 'Session expired. Please try again.');
-    }
-
-    if ($request['otp'] != $storedOtp) {
-        return back()->with('error', 'Invalid OTP. Please try again.');
-    }
-
-    // Get user and login
-    $user = \App\Models\User::find($userId);
-
-    if (!$user) {
-        return redirect('/')->with('error', 'User not found. Please try again.');
-    }
-
-    // Clear OTP session
-    session()->forget(['login_otp', 'login_user_id']);
-
-    Auth::login($user);
-
-    // Check for stored redirect URL first, then intended URL, then default to wishlist
-    $redirect = session('login_redirect');
-    if ($redirect) {
-        session()->forget('login_redirect');
-        return redirect($redirect)->with('success', 'Login successful!');
-    }
-
-    $intended = session('url.intended', route('wishlist'));
-    return redirect($intended)->with('success', 'Login successful!');
-});
-
-// Login Submit
-Route::post('/login', function () {
-    $credentials = request()->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
-
-    $user = \App\Models\User::where('email', $credentials['email'])->first();
-
-    // Check if user exists
-    if (!$user) {
-        return redirect()->route('register')->withErrors([
-            'email' => 'No account found with this email address. Please register first.',
-        ])->onlyInput('email');
-    }
-
-    if (!$user || !Hash::check($credentials['password'], $user->password)) {
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
-    }
-
-    // Check if email is verified
-    if (!$user->email_verified) {
-        return back()->withErrors([
-            'email' => 'Please verify your email address before logging in. Check your email for the OTP.',
-        ])->onlyInput('email');
-    }
-
-    if (Auth::attempt($credentials)) {
-        request()->session()->regenerate();
-        return redirect()->intended('/staff');
-    }
-
-    return back()->withErrors([
-        'email' => 'The provided credentials do not match our records.',
-    ])->onlyInput('email');
-});
-
-// User Orders
-Route::get('/my-orders', function () {
-    if (!Auth::check()) {
-        return redirect()->guest('/login');
-    }
-
-    $user = Auth::user();
-    $orders = \App\Models\Order::where('user_id', $user->id)->with('items')->latest()->get();
-
-    return view('auth.my-orders', compact('orders'));
-})->name('user.orders');
-
-// User Order Details
-Route::get('/my-orders/{id}', function ($id) {
-    if (!Auth::check()) {
-        return redirect()->guest('/login');
-    }
-
-    $user = Auth::user();
-    $order = \App\Models\Order::where('user_id', $user->id)->where('id', $id)->with('items.product')->firstOrFail();
-
-    return view('auth.order-details', compact('order'));
-})->name('order.details');
-
-// Cancel User Order
-Route::post('/my-orders/{id}/cancel', function ($id) {
-    if (!Auth::check()) {
-        return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-    }
-
-    $user = Auth::user();
-    $order = \App\Models\Order::where('user_id', $user->id)->where('id', $id)->first();
-
-    if (!$order) {
-        return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-    }
-
-    if (!in_array($order->status, ['pending', 'confirmed'])) {
-        return response()->json(['success' => false, 'message' => 'Only pending or confirmed orders can be cancelled'], 400);
-    }
-
-    $order->status = 'cancelled';
-    $order->save();
-
-    return response()->json(['success' => true, 'message' => 'Order cancelled successfully']);
-})->name('order.cancel');
-
-// User Profile
-Route::get('/profile', function () {
-    if (!Auth::check()) {
-        return redirect()->guest('/login');
-    }
-
-    $user = Auth::user();
-    return view('auth.profile', compact('user'));
-})->name('user.profile');
-
-// Delete User Account
-Route::delete('/profile/delete', function () {
-    if (!Auth::check()) {
-        return redirect()->guest('/login');
-    }
-
-    $user = Auth::user();
-
-    // Delete related data first
-    \App\Models\Order::where('user_id', $user->id)->delete();
-    \App\Models\ReferralTracking::where('referral_code', $user->referral_code)->delete();
-
-    // Delete the user
-    \App\Models\User::destroy($user->id);
-
-    // Logout the user
-    Auth::logout();
-
-    return redirect('/')->with('success', 'Your account has been successfully deleted.');
-})->name('user.delete');
-
-// Admin Routes
-Route::middleware(['auth:staff'])->group(function () {
-    Route::delete('/admin/users/{id}', function ($id) {
-        $user = \App\Models\User::find($id);
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
-        }
-
-        // Delete related data first
-        \App\Models\Order::where('user_id', $user->id)->delete();
-        \App\Models\ReferralTracking::where('referral_code', $user->referral_code)->delete();
-
-        // Delete the user
-        $user->delete();
-
-        return response()->json(['success' => 'User deleted successfully']);
-    })->name('admin.users.delete');
-});
-
-// Logout
-Route::post('/logout', function () {
-    Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-
-    return redirect('/');
-})->name('logout');
-
-
-/*
-|--------------------------------------------------------------------------
-| Password Reset Routes (FIXED ? Real Email Sending)
-|--------------------------------------------------------------------------
-*/
-
-// Request reset link form
-Route::get('/password/reset', function () {
-    return view('auth.passwords.email');
-})->name('password.request');
-
-// Send reset link email (REAL)
-Route::post('/password/email', function (\Illuminate\Http\Request $request) {
-    $request->validate(['email' => 'required|email']);
-
-    $status = Password::sendResetLink(
-        $request->only('email')
-    );
-
-    return $status === Password::RESET_LINK_SENT
-        ? back()->with('status', __($status))
-        : back()->withErrors(['email' => __($status)]);
-})->name('password.email');
-
-// Reset password form
-Route::get('/password/reset/{token}', function (\Illuminate\Http\Request $request, $token) {
-    return view('auth.passwords.reset', [
-        'token' => $token,
-        'email' => $request->query('email'), // important
-    ]);
-})->name('password.reset');
-
-// Update password
-Route::post('/password/reset', function (\Illuminate\Http\Request $request) {
-    $request->validate([
-        'token' => 'required',
-        'email' => 'required|email',
-        'password' => 'required|min:8|confirmed',
-    ]);
-
-    $status = Password::reset(
-        $request->only('email', 'password', 'password_confirmation', 'token'),
-        function ($user, $password) {
-            $user->forceFill([
-                'password' => Hash::make($password),
-                'remember_token' => Str::random(60),
-            ])->save();
-
-            event(new PasswordReset($user));
-
-            // auto login after reset
-            Auth::login($user);
-        }
-    );
-
-    return $status === Password::PASSWORD_RESET
-        ? redirect('/')->with('status', __($status))
-        : back()->withErrors(['email' => __($status)]);
-})->name('password.update');
-
-
-/*
-|--------------------------------------------------------------------------
-| Checkout Route
-|--------------------------------------------------------------------------
-*/
-// Referral routes
-Route::get('/referral-required', [ReferralController::class, 'show'])->name('referral.required');
-Route::post('/referral-required', [ReferralController::class, 'submit'])->name('referral.submit');
-
-Route::post('/checkout', function (\Illuminate\Http\Request $request) {
-    // Enforce referral requirement on backend too
-    if (!$request->session()->has('referral_code')) {
-        return response()->json(['success' => false, 'message' => 'Referral code is required to place an order'], 403);
-    }
-
-    // Continue with original checkout logic
-    try {
-        $input = $request->all();
-        $cartItems = $input['cart'] ?? [];
-        $address = $input['address'] ?? [];
-
-        if (empty($cartItems)) {
-            return response()->json(['success' => false, 'message' => 'Cart is empty']);
-        }
-
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($input, $cartItems, $address) {
-
-            // Check if all items have sufficient stock before placing order
-            foreach ($cartItems as $item) {
-                $product = \App\Models\Product::find($item['id']);
-                if (!$product) {
-                    throw new \Exception('Product not found: ' . $item['id']);
-                }
-                if ($product->stock < $item['qty']) {
-                    throw new \Exception('Insufficient stock for ' . $product->name . '. Available: ' . $product->stock . ', Requested: ' . $item['qty']);
-                }
-            }
-
-            $order = \App\Models\Order::create([
-                'user_id' => Auth::check() ? Auth::user()->id : null,
-                'status' => 'pending',
-                'subtotal' => $input['subtotal'] ?? 0,
-                'discount_amount' => $input['discount'] ?? 0,
-                'total_amount' => $input['total'] ?? 0,
-
-                'first_name' => $address['first_name'] ?? 'Guest',
-                'last_name' => $address['last_name'] ?? '',
-                'email' => $address['email'] ?? (Auth::check() ? Auth::user()->email : 'guest@example.com'),
-                'phone' => $address['phone'] ?? '',
-
-                'address' => $address['address'] ?? '',
-                'city' => $address['city'] ?? '',
-                'state' => $address['state'] ?? '',
-                'zip' => $address['zip'] ?? '',
-
-                'payment_method' => $input['payment_method'] ?? 'cod',
-                'payment_status' => ($input['payment_method'] == 'online') ? 'paid' : 'pending',
-
-                'referral_code' => session('referral_code'),
-            ]);
-
-            foreach ($cartItems as $item) {
-                \App\Models\OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['id'],
-                    'product_name' => $item['name'],
-                    'product_image' => $item['image'] ?? null,
-                    'price' => $item['price'],
-                    'quantity' => $item['qty'],
-                    'total' => $item['price'] * $item['qty'],
-                    'color' => $item['color'] ?? null,
-                    'size' => $item['size'] ?? null,
-                ]);
-
-                // Reduce stock for the purchased product
-                $product = \App\Models\Product::find($item['id']);
-                if ($product) {
-                    $product->decrement('stock', $item['qty']);
-                }
-            }
-
-            // Get referral code and staff ID from session
-            $referralCode = session('referral_code');
-            $referralStaffId = session('referral_staff_id');
-
-            // Update order with referral information
-            if ($referralCode && $referralStaffId) {
-                $order->ref_code = $referralCode;
-                $order->staff_id = $referralStaffId;
-                $order->save();
-            }
-
-            if ($referralCode && $referralStaffId) {
-                // Track referral for purchase
-                \App\Models\ReferralTracking::create([
-                    'staff_id' => $referralStaffId,
-                    'referral_code' => $referralCode,
-                    'referral_type' => 'purchase',
-                    'amount' => $order->total_amount,
-                    'used_at' => now(),
-                ]);
-            }
-
-            return response()->json(['success' => true, 'message' => 'Order placed successfully!', 'order_id' => $order->id]);
-        });
-
-    } catch (\Exception $e) {
-        \Illuminate\Support\Facades\Log::error('Order Error: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => 'Order failed: ' . $e->getMessage()], 500);
-    }
-})->name('checkout');
-
-
-/*
-|--------------------------------------------------------------------------
-| Front Routes
-|--------------------------------------------------------------------------
-*/
 Route::get('/', [HomeController::class, 'index'])->name('home');
-
 Route::get('/hero', function () {
-    return view('hero');
-});
-
+    return view('hero'); });
 Route::get('/products', [HomeController::class, 'products'])->name('products');
 Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
 Route::get('/trendy', [HomeController::class, 'trendy'])->name('trendy');
-
 Route::get('/product/{id}', [HomeController::class, 'show'])->name('product.show');
-
 Route::get('/admin/products/search-suggestions', [ProductController::class, 'searchSuggestions']);
-
 Route::get('/womens', [HomeController::class, 'women'])->name('women.page');
 Route::get('/mens', [HomeController::class, 'mens'])->name('men.page');
 Route::get('/kids', [HomeController::class, 'kids'])->name('kids.page');
-
 Route::get('/cart', function () {
-    return view('cart');
-})->name('cart')->middleware('auth');
-
+    return view('cart'); })->name('cart')->middleware('auth');
 Route::get('/wishlist', function () {
-    return view('wishlist');
-})->name('wishlist')->middleware('auth');
-
+    return view('wishlist'); })->name('wishlist')->middleware('auth');
 Route::get('/api/products/related/{category}/{excludeId}', [ProductController::class, 'getRelatedProducts'])->name('products.related');
-
 Route::get('/checkout', function () {
-    return view('checkout');
-})->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
-
+    return view('checkout'); })->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
 Route::get('/payment', function () {
-    return view('payment');
-})->name('payment');
-
-
-/*
-|--------------------------------------------------------------------------
-| Contact Routes
-|--------------------------------------------------------------------------
-*/
+    return view('payment'); })->name('payment');
 Route::get('/contact', function () {
-    return view('contact');
-})->name('contact');
-
-Route::post('/contact', function () {
-    $validated = request()->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|max:255',
-        'subject' => 'required|string|max:255',
-        'message' => 'required|string',
-    ]);
-
-    // Send email using the ContactMail mailable
-    try {
-        Mail::to(config('mail.from.address'))->send(new ContactMail($validated));
-    } catch (\Exception $e) {
-        \Illuminate\Support\Facades\Log::error('Contact form email failed: ' . $e->getMessage());
-    }
-
-    return redirect()->back()->with('success', 'Thank you for your message! We will get back to you soon.');
-})->name('contact.submit');
+    return view('contact'); })->name('contact');
+Route::post('/contact/submit', [HomeController::class, 'contact'])->name('contact.submit');
 
 
-/*
-|--------------------------------------------------------------------------
-| Admin Login Route
-|--------------------------------------------------------------------------
-*/
-// Test admin auth route
-Route::get('/admin/test-auth', function () {
-    if (auth()->guard('staff')->check()) {
-        return response()->json([
-            'authenticated' => true,
-            'user' => auth()->guard('staff')->user()
-        ]);
-    } else {
-        return response()->json(['authenticated' => false]);
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('login');
+Route::post('/user-login', [UserLoginController::class, 'login'])->name('user.login.submit');
+Route::get('/register', function () {return view('auth.register');})->name('register');
+Route::post('/register/submit', [UserLoginController::class, 'register'])->name('register.submit');
+Route::get('/verify-otp', [UserLoginController::class, 'verifyotp'])->name('verify.otp.form');
+Route::post('/verify-otp/submit', [UserLoginController::class, 'otpsubmit'])->name('user.otp.submit');
+Route::get('/verify-login-otp', [UserLoginController::class, ' verifyloginotp'])->name('verify.login.otp.form');
+Route::post('/verify-login-otp-submit', [UserLoginController::class, 'verifyloginotpsubmit'])->name('verify-login-otp-submit');
+Route::post('/logout', [UserLoginController::class, 'logout'])->name('logout');
+
+
+
+
+Route::get('/my-orders', [OrderController::class, 'order'])->name('user.orders');
+Route::get('/my-orders/{id}', [OrderController::class, 'orderdetails'])->name('order.details');
+Route::post('/my-orders/{id}/cancel', [OrderController::class, 'cancelorder'])->name('order.cancel');
+
+
+Route::get('/profile', [ProfileController::class, 'profile'])->name('user.profile');
+Route::delete('/profile/delete', [ProfileController::class, 'delete'])->name('user.delete');
+
+
+
+
+
+Route::middleware(['auth:staff'])->group(function () {
+    Route::delete('/admin/users/{id}', [StaffController::class, 'deleteuser'])->name('admin.users.delete');
+
 });
 
-Route::get('/admin/login', function () {
 
-    // If already logged in as admin
-    if (auth('admin')->check()) {
-        return redirect()->route('admin.dashboard');
-    }
+Route::get('/password/reset', [AdminController::class, 'reset'])->name('password.request');
+Route::post('/password/email', [AdminController::class, 'updatepassword'])->name('password.email');
+Route::get('/password/reset/{token}', [AdminController::class, 'resettoken'])->name('password.request');
+Route::post('/password/reset', [AdminController::class, 'updateresetpassword'])->name('password.update');
 
-    return view('admin.login');
 
-})->name('admin.login');
+
+
+
+
+Route::get('/referral-required', [ReferralController::class, 'show'])->name('referral.required');
+Route::post('/referral-required', [ReferralController::class, 'submit'])->name('referral.submit');
+
+Route::post('/checkout', [CartController::class, 'checkout'])->name('checkout');
+
+Route::middleware(['web', 'App\Http\Middleware\StaffAuth'])->group(function () {
+    Route::get('/admin/billing-staff', [App\Http\Controllers\Admin\BillingStaffController::class, 'index'])->name('admin.billing.staff');
+    Route::get('/admin/billing-staff/create', [App\Http\Controllers\Admin\BillingStaffController::class, 'create'])->name('admin.billing.staff.create');
+    Route::post('/admin/billing-staff', [App\Http\Controllers\Admin\BillingStaffController::class, 'store'])->name('admin.billing.staff.store');
+    Route::get('/admin/billing-staff/{id}', [App\Http\Controllers\Admin\BillingStaffController::class, 'show'])->name('admin.billing.staff.show');
+    Route::get('/admin/billing-staff/{id}/edit', [App\Http\Controllers\Admin\BillingStaffController::class, 'edit'])->name('admin.billing.staff.edit');
+    Route::put('/admin/billing-staff/{id}', [App\Http\Controllers\Admin\BillingStaffController::class, 'update'])->name('admin.billing.staff.update');
+    Route::delete('/admin/billing-staff/{id}', [App\Http\Controllers\Admin\BillingStaffController::class, 'destroy'])->name('admin.billing.staff.destroy');
+});
+
+
+
+
+
+
+
+
+// Route::get('/admin/test-auth', function () {
+//     if (auth()->guard('staff')->check()) {
+//         return response()->json([
+//             'authenticated' => true,
+//             'user' => auth()->guard('staff')->user()
+//         ]);
+//     } else {
+//         return response()->json(['authenticated' => false]);
+//     }
+// });
+
+Route::get('/admin/login', [AdminController::class, 'login'])->name('admin.login');
+
+
+
+
+
 
 // Admin Login Submit
 Route::post('/admin/login', function () {
@@ -647,21 +186,8 @@ Route::middleware('auth:admin')->group(function () {
         ));
     })->name('admin.dashboard');
 });
-/*
-|--------------------------------------------------------------------------
-| Admin Routes (Using Staff Authentication)
-|--------------------------------------------------------------------------
-*/
-// Admin Billing Staff Routes
-Route::middleware(['web', 'App\Http\Middleware\StaffAuth'])->group(function () {
-    Route::get('/admin/billing-staff', [App\Http\Controllers\Admin\BillingStaffController::class, 'index'])->name('admin.billing.staff');
-    Route::get('/admin/billing-staff/create', [App\Http\Controllers\Admin\BillingStaffController::class, 'create'])->name('admin.billing.staff.create');
-    Route::post('/admin/billing-staff', [App\Http\Controllers\Admin\BillingStaffController::class, 'store'])->name('admin.billing.staff.store');
-    Route::get('/admin/billing-staff/{id}', [App\Http\Controllers\Admin\BillingStaffController::class, 'show'])->name('admin.billing.staff.show');
-    Route::get('/admin/billing-staff/{id}/edit', [App\Http\Controllers\Admin\BillingStaffController::class, 'edit'])->name('admin.billing.staff.edit');
-    Route::put('/admin/billing-staff/{id}', [App\Http\Controllers\Admin\BillingStaffController::class, 'update'])->name('admin.billing.staff.update');
-    Route::delete('/admin/billing-staff/{id}', [App\Http\Controllers\Admin\BillingStaffController::class, 'destroy'])->name('admin.billing.staff.destroy');
-});
+
+
 
 Route::prefix('admin')
     ->name('admin.')
@@ -1314,3 +840,41 @@ Route::post('/admin/password/reset', function (\Illuminate\Http\Request $request
 
     return redirect('/admin')->with('status', 'Your password has been reset!');
 })->name('admin.password.update');
+
+
+// Route::post('/login', function () {
+//     $credentials = request()->validate([
+//         'email' => ['required', 'email'],
+//         'password' => ['required'],
+//     ]);
+
+//     $user = \App\Models\User::where('email', $credentials['email'])->first();
+
+//     if (!$user) {
+//         return redirect()->route('register')->withErrors([
+//             'email' => 'No account found with this email address. Please register first.',
+//         ])->onlyInput('email');
+//     }
+
+//     if (!$user || !Hash::check($credentials['password'], $user->password)) {
+//         return back()->withErrors([
+//             'email' => 'The provided credentials do not match our records.',
+//         ])->onlyInput('email');
+//     }
+
+//     if (!$user->email_verified) {
+//         return back()->withErrors([
+//             'email' => 'Please verify your email address before logging in. Check your email for the OTP.',
+//         ])->onlyInput('email');
+//     }
+
+//     if (Auth::attempt($credentials)) {
+//         request()->session()->regenerate();
+//         return redirect()->intended('/staff');
+//     }
+
+//     return back()->withErrors([
+//         'email' => 'The provided credentials do not match our records.',
+//     ])->onlyInput('email');
+// });
+

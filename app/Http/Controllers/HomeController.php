@@ -5,21 +5,19 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Offer;
-
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ContactMail;
 class HomeController extends Controller
 {
     public function index(Request $request)
     {
-        // Handle referral tracking
         $referralCode = $request->query('ref');
         if ($referralCode) {
             session(['referral_code' => $referralCode]);
         }
 
-        // Fetch all products
         $products = Product::orderBy('id', 'desc')->get();
 
-        // Fetch trendy products
         $trendyProducts = Product::where('status', 'active')
             ->whereNotNull('trend_type')
             ->orderByRaw("CASE
@@ -83,7 +81,6 @@ class HomeController extends Controller
     {
         $product = Product::findOrFail($id);
 
-        // Prepare size prices data for the view
         $sizePrices = [];
         if ($product->size_prices && is_array($product->size_prices)) {
             $sizePrices = $product->size_prices;
@@ -92,21 +89,18 @@ class HomeController extends Controller
         }
 
         $isLoggedIn = auth()->check();
-        
+
         return view('product-details', compact('product', 'sizePrices', 'isLoggedIn'));
     }
 
-    // ✅ FIXED: WOMEN (show all products from products table)
     public function women()
     {
-        // Exclude unwanted categories: men, recreation, Trendy, women
         $excludedCategories = ['men', 'recreation', 'Trendy', 'women'];
-        
+
         $products = Product::whereNotIn('category', $excludedCategories)
             ->orderBy('id', 'desc')
             ->get();
-        
-        // Get unique categories from products table for the category filter
+
         $categories = Product::select('category')
             ->whereNotNull('category')
             ->where('category', '!=', '')
@@ -114,11 +108,29 @@ class HomeController extends Controller
             ->distinct()
             ->orderBy('category')
             ->get()
-            ->map(function($item) {
+            ->map(function ($item) {
                 return ['name' => $item->category, 'category' => $item->category];
             });
 
         return view('women', compact('products', 'categories'));
+    }
+    public function contact()
+    {
+        $validated = request()->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        try {
+            Mail::to(config('mail.from.address'))->send(new ContactMail($validated));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Contact form email failed: ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Thank you for your message! We will get back to you soon.');
+
     }
 
 }

@@ -6,7 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-
+use App\Models\Order;
+use App\Models\ReferralTracking;
 class StaffController extends Controller
 {
     public function dashboard()
@@ -14,29 +15,29 @@ class StaffController extends Controller
         // Check if staff member is authenticated
         if (Auth::guard('staff')->check()) {
             $staff = Auth::guard('staff')->user();
-            
+
             // Ensure staff member has a referral code
             if (!$staff->referral_code) {
                 $referralCode = $this->generateStaffReferralCode();
                 \App\Models\Staff::where('id', $staff->id)->update(['referral_code' => $referralCode]);
                 $staff->referral_code = $referralCode; // Update the local object as well
             }
-            
+
             // Get referral statistics for current staff - only count completed orders
             $completedReferredOrders = \App\Models\Order::where('staff_id', $staff->id)
                 ->where('status', 'completed')
                 ->get();
-            
+
             $purchaseReferrals = $completedReferredOrders->count();
-            
+
             // Calculate total earnings from completed referred purchases (10% commission)
             $totalEarnings = $completedReferredOrders->sum('total_amount') * 0.10;
-            
+
             $referralStats = [
                 'purchase_referrals' => $purchaseReferrals,
                 'total_earnings' => $totalEarnings,
             ];
-            
+
             // Get recent activities for the current staff member - show completed referred orders
             $recentCompletedOrders = \App\Models\Order::where('staff_id', $staff->id)
                 ->where('status', 'completed')
@@ -44,9 +45,9 @@ class StaffController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->limit(5)
                 ->get()
-                ->map(function($order) {
+                ->map(function ($order) {
                     $description = 'Purchase completed';
-                    
+
                     if ($order->user && $order->user->name) {
                         $description .= ' from ' . $order->user->name;
                     } elseif ($order->email) {
@@ -54,9 +55,9 @@ class StaffController extends Controller
                     } else {
                         $description .= ' from customer';
                     }
-                    
+
                     $earnings = $order->total_amount * 0.10; // 10% commission on order amount
-                    
+    
                     return [
                         'date' => \Carbon\Carbon::parse($order->updated_at)->format('d M Y'),
                         'description' => $description,
@@ -65,7 +66,7 @@ class StaffController extends Controller
                     ];
                 })
                 ->toArray();
-            
+
             // If no completed orders, show recent referral tracking records
             $recentActivities = $recentCompletedOrders;
             if (empty($recentActivities)) {
@@ -74,9 +75,9 @@ class StaffController extends Controller
                     ->orderBy('created_at', 'desc')
                     ->limit(5)
                     ->get()
-                    ->map(function($referral) {
+                    ->map(function ($referral) {
                         $description = ucfirst($referral->referral_type) . ' referral';
-                        
+
                         if ($referral->user && $referral->user->name) {
                             $description .= ' from ' . $referral->user->name;
                         } elseif ($referral->referred_user_email) {
@@ -84,14 +85,14 @@ class StaffController extends Controller
                         } else {
                             $description .= ' from Unknown User';
                         }
-                        
+
                         $earnings = 0;
                         if ($referral->referral_type === 'purchase' && $referral->amount) {
                             $earnings = $referral->amount * 0.10;
                         } else {
                             $earnings = 10;
                         }
-                        
+
                         return [
                             'date' => \Carbon\Carbon::parse($referral->created_at)->format('d M Y'),
                             'description' => $description,
@@ -101,13 +102,13 @@ class StaffController extends Controller
                     })
                     ->toArray();
             }
-            
+
             // Get admin messages for the current staff member
             $adminMessages = \App\Models\StaffMessage::where('staff_id', $staff->id)
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->toArray();
-            
+
             return view('staff.dashboard', compact('staff', 'referralStats', 'recentActivities', 'adminMessages'));
         } else {
             // If not authenticated as staff, redirect to staff login
@@ -134,61 +135,61 @@ class StaffController extends Controller
     {
         return view('staff.reports');
     }
-    
+
     public function staffMembers_old()
     {
         $staffMembers = \App\Models\Staff::withCount('referrals')
             ->get();
-            
+
         foreach ($staffMembers as $staff) {
             $referredOrders = \App\Models\Order::where('referral_code', $staff->referral_code)->get();
-            $staff->total_earnings = $referredOrders->sum('total_amount') * 0.1; 
+            $staff->total_earnings = $referredOrders->sum('total_amount') * 0.1;
         }
-            
+
         return view('staff.staff-members', compact('staffMembers'));
     }
-public function staffMembers()
-{
-    $loggedInStaff = auth('staff')->user();
+    public function staffMembers()
+    {
+        $loggedInStaff = auth('staff')->user();
 
-    $staffMembers = \App\Models\Staff::withCount('referrals')
-        ->where('district', $loggedInStaff->district)
-        ->where('id', '!=', $loggedInStaff->id)
-        ->get();
+        $staffMembers = \App\Models\Staff::withCount('referrals')
+            ->where('district', $loggedInStaff->district)
+            ->where('id', '!=', $loggedInStaff->id)
+            ->get();
 
-    foreach ($staffMembers as $staff) {
-        $referredOrders = \App\Models\Order::where('referral_code', $staff->referral_code)->get();
-        $staff->total_earnings = $referredOrders->sum('total_amount') * 0.1; 
+        foreach ($staffMembers as $staff) {
+            $referredOrders = \App\Models\Order::where('referral_code', $staff->referral_code)->get();
+            $staff->total_earnings = $referredOrders->sum('total_amount') * 0.1;
+        }
+
+        return view('staff.staff-members', compact('staffMembers'));
     }
 
-    return view('staff.staff-members', compact('staffMembers'));
-}
-    
     public function profile()
     {
         $staff = auth()->guard('staff')->user();
         return view('staff.profile', compact('staff'));
     }
-    
+
     public function updatePassword(\Illuminate\Http\Request $request)
     {
         $request->validate([
             'current_password' => 'required',
             'new_password' => 'required|string|min:8|confirmed',
         ]);
-        
+
         $staff = auth()->guard('staff')->user();
-        
+
         // Check if current password is correct
         if (!\Illuminate\Support\Facades\Hash::check($request->current_password, $staff->password)) {
             return redirect()->back()->withErrors(['current_password' => 'Current password is incorrect']);
         }
-        
+
         // Update password
         \App\Models\Staff::where('id', $staff->id)->update([
             'password' => \Illuminate\Support\Facades\Hash::make($request->new_password)
         ]);
-        
+
         return redirect()->back()->with('success', 'Password updated successfully');
     }
 
@@ -236,7 +237,7 @@ public function staffMembers()
 
         return $referralCode;
     }
-    
+
     private function generateStaffReferralCode()
     {
         do {
@@ -266,5 +267,23 @@ public function staffMembers()
 
         $referralLink = url('/?ref=' . $user->referral_code);
         return response()->json(['referral_link' => $referralLink]);
+    }
+
+    public function deleteuser($id){
+
+
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        Order::where('user_id', $user->id)->delete();
+        ReferralTracking::where('referral_code', $user->referral_code)->delete();
+
+        $user->delete();
+
+        return response()->json(['success' => 'User deleted successfully']);
+
+
     }
 }

@@ -40,7 +40,7 @@
         <div class="auth-alert error">{{ session('error') }}</div>
       @endif
 
-      <form method="POST" action="{{ url('/verify-login-otp') }}" class="auth-form" novalidate>
+      <form method="POST" action="{{ route('verify-login-otp-submit') }}" class="auth-form" novalidate>
         @csrf
 
         <div class="auth-field">

@@ -45,7 +45,7 @@
         <div class="auth-alert error">{{ $errors->first('otp') }}</div>
       @endif
 
-      <form method="POST" action="{{ url('/verify-otp') }}" class="auth-form" novalidate>
+      <form method="POST" action="{{route('user.otp.submit') }}" class="auth-form" novalidate>
         @csrf
 
         <div class="auth-field">
