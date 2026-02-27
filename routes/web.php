@@ -11,12 +11,13 @@ use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\StaffController;
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminLoginController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReferralController;
-
+use \App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 
 
 
@@ -27,14 +28,14 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/hero', function () {
     return view('hero');
 });
-Route::get('/products', [HomeController::class, 'products'])->name('products');
-Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
-Route::get('/trendy', [HomeController::class, 'trendy'])->name('trendy');
-Route::get('/product/{id}', [HomeController::class, 'show'])->name('product.show');
+Route::get('/products', [ProductController::class, 'products'])->name('products');
+Route::get('/shop', [ProductController::class, 'shop'])->name('shop');
+Route::get('/trendy', [ProductController::class, 'trendy'])->name('trendy');
+Route::get('/product/{id}', [ProductController::class, 'show'])->name('product.show');
 Route::get('/admin/products/search-suggestions', [ProductController::class, 'searchSuggestions']);
-Route::get('/womens', [HomeController::class, 'women'])->name('women.page');
-Route::get('/mens', [HomeController::class, 'mens'])->name('men.page');
-Route::get('/kids', [HomeController::class, 'kids'])->name('kids.page');
+Route::get('/womens', [ProductController::class, 'women'])->name('women.page');
+Route::get('/mens', [ProductController::class, 'mens'])->name('men.page');
+Route::get('/kids', [ProductController::class, 'kids'])->name('kids.page');
 Route::get('/cart', function () {
     return view('cart');
 })->name('cart')->middleware('auth');
@@ -73,7 +74,8 @@ Route::post('/contact/submit', [HomeController::class, 'contact'])->name('contac
 Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('login');
 Route::post('/user-login', [UserLoginController::class, 'login'])->name('user.login.submit');
 Route::get('/register', function () {
-    return view('auth.register'); })->name('register');
+    return view('auth.register');
+})->name('register');
 Route::post('/register/submit', [UserLoginController::class, 'register'])->name('register.submit');
 Route::get('/verify-otp', [UserLoginController::class, 'verifyotp'])->name('verify.otp.form');
 Route::post('/verify-otp/submit', [UserLoginController::class, 'otpsubmit'])->name('user.otp.submit');
@@ -102,10 +104,10 @@ Route::middleware(['auth:staff'])->group(function () {
 });
 
 
-Route::get('/password/reset', [AdminController::class, 'reset'])->name('password.request');
-Route::post('/password/email', [AdminController::class, 'updatepassword'])->name('password.email');
-Route::get('/password/reset/{token}', [AdminController::class, 'resettoken'])->name('password.request');
-Route::post('/password/reset', [AdminController::class, 'updateresetpassword'])->name('password.update');
+Route::get('/password/reset', [AdminLoginController::class, 'reset'])->name('password.request');
+Route::post('/password/email', [AdminLoginController::class, 'updatepassword'])->name('password.email');
+Route::get('/password/reset/{token}', [AdminLoginController::class, 'resettoken'])->name('password.request');
+Route::post('/password/reset', [AdminLoginController::class, 'updateresetpassword'])->name('password.update');
 
 
 
@@ -145,155 +147,36 @@ Route::middleware(['web', 'App\Http\Middleware\StaffAuth'])->group(function () {
 //     }
 // });
 
-Route::get('/admin/login', [AdminController::class, 'login'])->name('admin.login');
-Route::post('/admin/login', [AdminController::class, 'authenticate'])->name('admin.login.submit');
+Route::get('/admin/login', [AdminLoginController::class, 'login'])->name('admin.login');
+Route::post('/admin/login', [AdminLoginController::class, 'authenticate'])->name('admin.login.submit');
 
 
 Route::middleware('auth:admin')->group(function () {
 
-Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/admin/dashboard', [AdminLoginController::class, 'dashboard'])->name('admin.dashboard');
 
 
-
-    
 });
 
 
 
-Route::prefix('admin')
-    ->name('admin.')
-    ->middleware(['web', 'App\Http\Middleware\StaffAuth'])   // ? Use staff auth middleware
+Route::prefix('admin')->name('admin.')->middleware(['web', 'App\Http\Middleware\StaffAuth'])
     ->group(function () {
 
-        Route::get('/', function () {
-            $totalProducts = \App\Models\Product::count();
-            $totalUsers = \App\Models\User::count();
-            $pendingOrders = \App\Models\Order::where('status', 'pending')->count();
-            $recentOrders = \App\Models\Order::with('items')->latest()->limit(5)->get();
 
-            $topSellingProducts = \App\Models\OrderItem::leftJoin('products', 'order_items.product_id', '=', 'products.id')
-                ->selectRaw('order_items.product_name, products.badge, SUM(order_items.quantity) as total_quantity')
-                ->groupBy('order_items.product_name', 'products.badge')
-                ->orderByDesc('total_quantity')
-                ->limit(5)
-                ->get();
+        Route::get('/', [AdminLoginController::class, 'dashboard'])->name('dashboard');
+        Route::get('/products', [AdminProductController::class, 'dispaly'])->name('products');
+        Route::get('/products/list', [AdminProductController::class, 'index'])->name('products.list');
+        Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{id}', [AdminProductController::class, 'show'])->name('products.show');
+        Route::put('/products/{id}', [AdminProductController::class, 'update'])->name('products.update');
+        Route::delete('/products/{id}', [AdminProductController::class, 'destroy'])->name('products.destroy');
 
-            return view('admin.dashboard', compact(
-                'totalProducts',
-                'totalUsers',
-                'pendingOrders',
-                'recentOrders',
-                'topSellingProducts'
-            ));
-        })->name('dashboard');
-
-        Route::get('/products', function () {
-            $products = \App\Models\Product::latest()->paginate(10);
-            return view('admin.products', compact('products'));
-        })->name('products');
-
-        Route::get('/offer', function () {
-            $offers = \App\Models\Offer::latest()->paginate(10);
-            return view('admin.offer', compact('offers'));
-        })->name('offer');
-
-        Route::post('/offer', function (\Illuminate\Http\Request $request) {
-            try {
-                \Illuminate\Support\Facades\Log::info('Offer upload request received', [
-                    'files' => $request->allFiles(),
-                    'inputs' => $request->except(['image']),
-                    'hasFile' => $request->hasFile('image'),
-                ]);
-
-                $request->validate([
-                    'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-                    'alt_text' => 'nullable|string|max:255',
-                ]);
-
-                if ($request->hasFile('image')) {
-                    $imagePath = $request->file('image')->store('offers', 'public');
-
-                    \App\Models\Offer::create([
-                        'title' => 'Offer ' . now()->format('Y-m-d H:i:s'),
-                        'image' => $imagePath,
-                        'alt_text' => $request->alt_text,
-                        'active' => true,
-                        'start_date' => now(),
-                        'end_date' => now()->addMonths(1),
-                    ]);
-                }
-
-                return response()->json(['success' => true]);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Offer creation failed: ' . $e->getMessage());
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-            }
-        })->name('offer.store');
-
-        Route::get('/offer/{id}/edit', function ($id) {
-            $offer = \App\Models\Offer::findOrFail($id);
-            return response()->json(['success' => true, 'data' => $offer]);
-        })->name('offer.edit');
-
-        Route::put('/offer/{id}', function (\Illuminate\Http\Request $request, $id) {
-            try {
-                $request->validate([
-                    'alt_text' => 'nullable|string|max:255',
-                    'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-                ]);
-
-                $offer = \App\Models\Offer::findOrFail($id);
-
-                if ($request->hasFile('image')) {
-                    if ($offer->image) {
-                        \Illuminate\Support\Facades\Storage::delete('public/' . $offer->image);
-                    }
-                    $imagePath = $request->file('image')->store('offers', 'public');
-                    $offer->image = $imagePath;
-                }
-
-                $offer->title = $request->title ?: $offer->title;
-                $offer->alt_text = $request->alt_text;
-                $offer->start_date = $request->start_date ?: $offer->start_date;
-                $offer->end_date = $request->end_date ?: $offer->end_date;
-                $offer->save();
-
-                return response()->json(['success' => true]);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Offer update failed: ' . $e->getMessage());
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-            }
-        })->name('offer.update');
-
-        Route::delete('/offer/{id}', function ($id) {
-            try {
-                $offer = \App\Models\Offer::findOrFail($id);
-
-                if ($offer->image) {
-                    \Illuminate\Support\Facades\Storage::delete('public/' . $offer->image);
-                }
-
-                $offer->delete();
-
-                return response()->json(['success' => true]);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Offer deletion failed: ' . $e->getMessage());
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-            }
-        })->name('offer.delete');
-
-        Route::get('/products/list', [\App\Http\Controllers\ProductController::class, 'index'])->name('products.list');
-        Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->name('products.store');
-        Route::get('/products/{id}', [\App\Http\Controllers\ProductController::class, 'show'])->name('products.show');
-        Route::put('/products/{id}', [\App\Http\Controllers\ProductController::class, 'update'])->name('products.update');
-        Route::delete('/products/{id}', [\App\Http\Controllers\ProductController::class, 'destroy'])->name('products.destroy');
-
-        // Category routes
-        Route::get('/categories', [\App\Http\Controllers\Admin\CategoryController::class, 'index'])->name('categories.list');
-        Route::post('/categories', [\App\Http\Controllers\Admin\CategoryController::class, 'store'])->name('categories.store');
-        Route::get('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'show'])->name('categories.show');
-        Route::put('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'update'])->name('categories.update');
-        Route::delete('/categories/{id}', [\App\Http\Controllers\Admin\CategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::get('/categories', [AdminCategoryController::class, 'index'])->name('categories.list');
+        Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
+        Route::get('/categories/{id}', [AdminCategoryController::class, 'show'])->name('categories.show');
+        Route::put('/categories/{id}', [AdminCategoryController::class, 'update'])->name('categories.update');
+        Route::delete('/categories/{id}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
 
         Route::get('/users', function () {
             $users = \App\Models\User::latest()->paginate(10);

@@ -11,13 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Order;
-class AdminController extends Controller
+class AdminLoginController extends Controller
 {
-
-
-
-
-
 public function login(){
 
 
@@ -32,9 +27,6 @@ public function login(){
     {
         return view('auth.passwords.email');
     }
-
-
-
 
     public function updatepassword(Request $request)
     {
