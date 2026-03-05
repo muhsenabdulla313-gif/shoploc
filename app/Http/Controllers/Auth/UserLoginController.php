@@ -20,39 +20,37 @@ class UserLoginController extends Controller
         return view('auth.user-login');
     }
 
-    public function login(Request $request)
+      public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
         ]);
 
         $user = User::where('email', $request->email)->first();
-
+        
         if (!$user) {
-            return redirect()->route('register')
-                ->with('error', 'No account found with this email address. Please register first.');
+            return redirect()->route('register')->with('error', 'No account found with this email address. Please register first.');
         }
-
+        
         if (!$user->email_verified) {
-            return back()->with('error', 'Please verify your email address before logging in.');
+            return redirect()->back()->with('error', 'Please verify your email address before logging in. Check your email for the OTP.');
         }
-
-        $otp = random_int(100000, 999999);
-
-        session([
-            'login_otp' => $otp,
-            'login_user_id' => $user->id,
-            'login_otp_expires_at' => now()->addMinutes(5),
-        ]);
-
-        if ($request->filled('redirect')) {
-            session(['login_redirect' => $request->redirect]);
+        
+        $otp = rand(100000, 999999);
+        
+session([
+    'login_otp' => $otp,
+    'login_user_id' => $user->id,
+    'login_otp_expires_at' => now()->addMinutes(5) 
+]);        
+        $redirect = $request->input('redirect');
+        if ($redirect) {
+            session(['login_redirect' => $redirect]);
         }
-
+        
         Mail::to($user->email)->send(new OtpMail($user->name, $user->email, $otp));
 
-        return redirect()->route('verify.login.otp.form')
-            ->with('success', 'Please check your email for the OTP.');
+        return redirect()->route('verify.login.otp.form')->with('success', 'Please check your email for the OTP to complete login.');
     }
 
     public function register(Request $request)
@@ -158,15 +156,7 @@ class UserLoginController extends Controller
         return redirect('/')->with('success', 'Registration successful!');
     }
 
-    public function verifyloginotp()
-    {
-        if (!session('login_user_id')) {
-            return redirect('/')->with('error', 'Session expired. Please try again.');
-        }
-
-        return view('auth.verify-login-otp');
-    }
-
+   
     public function verifyloginotpsubmit(Request $request)
     {
         $validated = $request->validate([
@@ -213,4 +203,13 @@ class UserLoginController extends Controller
 
         return redirect('/');
     }
+    public function verifyloginotp(){
+
+
+    if (!session('login_user_id')) {
+        return redirect('/')->with('error', 'Session expired. Please try again.');
+    }
+
+    return view('auth.verify-login-otp');
+}
 }

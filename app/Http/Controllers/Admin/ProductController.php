@@ -1,30 +1,37 @@
 <?php
 
-namespace App\Http\Controllers\admin;
-
+namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+
 use App\Models\Product;
-use App\Models\Offer;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
 
-    public function display()
-    {
-        $products =Product::latest()->paginate(10);
+
+
+public function display(){
+
+$products = Product::latest()->paginate(10);
         return view('admin.products', compact('products'));
-    }
-  
+
+}
     public function index(Request $request)
     {
         try {
             $query = Product::query();
 
+            // Apply category filter if provided
             if ($request->filled('category')) {
                 $query->where('category', $request->category);
             }
 
+            // Apply status filter if provided
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
@@ -48,12 +55,16 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+
+            // ✅ category must exist in categories table
             'category' => 'required|string|exists:categories,name',
+
             'subcategory' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0.01',
             'shipping_charge' => 'nullable|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
             'stock' => 'required|integer|min:0',
+
             'colors' => 'nullable|array',
             'colors.*' => 'string|max:50',
             'sizes' => 'nullable|array',
@@ -62,10 +73,12 @@ class ProductController extends Controller
             'size_prices.*' => 'array|nullable',
             'size_prices.*.price' => 'nullable|numeric|min:0',
             'size_prices.*.original_price' => 'nullable|numeric|min:0',
+
             'description' => 'nullable|string',
             'status' => 'required|string|in:active,inactive',
             'trend_type' => 'nullable|string|in:hot-trend,best-seller,featured',
             'rating' => 'nullable|numeric|min:0|max:5',
+
             'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
@@ -85,21 +98,24 @@ class ProductController extends Controller
         $additionalImagePaths = [];
 
         try {
+            // Handle main image
             if ($request->hasFile('main_image')) {
                 $mainImagePath = $request->file('main_image')->store('products/main', 'public');
             }
 
+            // Handle additional images
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $img) {
                     $additionalImagePaths[] = $img->store('products/additional', 'public');
                 }
             }
 
+            // Combine main image + additional
             $allImagePaths = [];
-            if ($mainImagePath)
-                $allImagePaths[] = $mainImagePath;
+            if ($mainImagePath) $allImagePaths[] = $mainImagePath;
             $allImagePaths = array_merge($allImagePaths, $additionalImagePaths);
 
+            // Set first image as main, rest as gallery
             $imagePath = $mainImagePath ?? ($allImagePaths[0] ?? null);
             $galleryPaths = count($allImagePaths) > 1 ? array_slice($allImagePaths, 1) : [];
 
@@ -135,10 +151,8 @@ class ProductController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            if (!empty($mainImagePath))
-                Storage::disk('public')->delete($mainImagePath);
-            foreach ($additionalImagePaths as $p)
-                Storage::disk('public')->delete($p);
+            if (!empty($mainImagePath)) Storage::disk('public')->delete($mainImagePath);
+            foreach ($additionalImagePaths as $p) Storage::disk('public')->delete($p);
 
             Log::error('Product creation failed', [
                 'error' => $e->getMessage(),
@@ -226,6 +240,7 @@ class ProductController extends Controller
         DB::beginTransaction();
 
         try {
+            // Main image replace
             if ($request->hasFile('main_image')) {
                 if (!empty($product->image)) {
                     Storage::disk('public')->delete($product->image);
@@ -233,12 +248,12 @@ class ProductController extends Controller
                 $product->image = $request->file('main_image')->store('products/main', 'public');
             }
 
+            // Additional images replace (full replace)
             if ($request->hasFile('images')) {
                 $existing = $product->gallery_images ?? [];
                 if (is_array($existing)) {
                     foreach ($existing as $old) {
-                        if (!empty($old))
-                            Storage::disk('public')->delete($old);
+                        if (!empty($old)) Storage::disk('public')->delete($old);
                     }
                 }
 
@@ -250,29 +265,17 @@ class ProductController extends Controller
             }
 
             foreach ([
-                'name',
-                'category',
-                'subcategory',
-                'price',
-                'shipping_charge',
-                'original_price',
-                'stock',
-                'description',
-                'status',
-                'trend_type',
-                'rating'
+                'name','category','subcategory','price','shipping_charge','original_price','stock',
+                'description','status','trend_type','rating'
             ] as $field) {
                 if ($request->has($field)) {
                     $product->{$field} = $request->input($field);
                 }
             }
 
-            if ($request->has('colors'))
-                $product->colors = $request->input('colors', []);
-            if ($request->has('sizes'))
-                $product->sizes = $request->input('sizes', []);
-            if ($request->has('size_prices'))
-                $product->size_prices = $this->processSizePrices($request->input('size_prices', []));
+            if ($request->has('colors')) $product->colors = $request->input('colors', []);
+            if ($request->has('sizes')) $product->sizes = $request->input('sizes', []);
+            if ($request->has('size_prices')) $product->size_prices = $this->processSizePrices($request->input('size_prices', []));
 
             $product->save();
             DB::commit();
@@ -314,8 +317,7 @@ class ProductController extends Controller
             $galleryImages = $product->gallery_images ?? [];
             if (is_array($galleryImages)) {
                 foreach ($galleryImages as $img) {
-                    if (!empty($img))
-                        Storage::disk('public')->delete($img);
+                    if (!empty($img)) Storage::disk('public')->delete($img);
                 }
             }
 
@@ -361,7 +363,7 @@ class ProductController extends Controller
 
         try {
             $product = Product::findOrFail($id);
-
+            
             $updateData = [];
             if ($request->has('trend_type')) {
                 $updateData['trend_type'] = $request->trend_type;
@@ -369,7 +371,7 @@ class ProductController extends Controller
             if ($request->has('rating')) {
                 $updateData['rating'] = $request->rating;
             }
-
+            
             $product->update($updateData);
 
             return response()->json([
@@ -405,7 +407,7 @@ class ProductController extends Controller
 
         try {
             $product = Product::findOrFail($request->product_id);
-
+            
             $product->update([
                 'trend_type' => $request->trend_type,
                 'rating' => $request->rating ?? $product->rating,
@@ -430,7 +432,8 @@ class ProductController extends Controller
     {
         try {
             $product = Product::findOrFail($id);
-
+            
+            // Remove trendy attributes
             $product->update([
                 'trend_type' => null,
                 'rating' => 0
@@ -461,6 +464,7 @@ class ProductController extends Controller
 
         $q = strtolower(trim($query));
 
+        // Popular categories suggestions (✅ no men/kids here)
         $popularCategories = [
             'saree' => 'Saree Collection',
             'kurta' => 'Kurta Collection',
@@ -486,12 +490,13 @@ class ProductController extends Controller
             }
         }
 
+        // ✅ FIXED: distinct categories from DB (no groupBy issue)
         $dbCategoryMatches = Product::whereRaw('LOWER(category) LIKE ?', ["%{$q}%"])
             ->selectRaw('DISTINCT category')
             ->limit(3)
             ->get()
             ->map(function ($row) {
-                $cat = (string) $row->category;
+                $cat = (string)$row->category;
                 return [
                     'id' => 'category_' . strtolower(str_replace(' ', '_', $cat)),
                     'name' => $cat . ' Collection',
@@ -502,6 +507,7 @@ class ProductController extends Controller
                 ];
             });
 
+        // Product name matches
         $nameProducts = Product::whereRaw('LOWER(name) LIKE ?', ["%{$q}%"])
             ->orWhereRaw('LOWER(subcategory) LIKE ?', ["%{$q}%"])
             ->select('id', 'name', 'category')
@@ -528,13 +534,13 @@ class ProductController extends Controller
     public function listTrendyProducts()
     {
         try {
-            $trendyProducts = Product::where(function ($query) {
+            $trendyProducts = Product::where(function($query) {
                 $query->whereNotNull('trend_type')
-                    ->where('trend_type', '!=', '');
+                      ->where('trend_type', '!=', '');
             })
-                ->orWhere('rating', '>', 4.0)
-                ->orderBy('id', 'desc')
-                ->get();
+            ->orWhere('rating', '>', 4.0)
+            ->orderBy('id', 'desc')
+            ->get();
 
             return response()->json([
                 'success' => true,
@@ -549,6 +555,7 @@ class ProductController extends Controller
         }
     }
 
+    // Related products returns FULL image URL
     public function getRelatedProducts($category, $excludeId)
     {
         try {
@@ -559,7 +566,7 @@ class ProductController extends Controller
                 ->limit(10)
                 ->get();
 
-            $relatedProducts->transform(function ($p) {
+            $relatedProducts->transform(function($p){
                 $p->image = $p->image
                     ? Storage::url($p->image)
                     : 'https://placehold.co/600x800?text=No+Image';

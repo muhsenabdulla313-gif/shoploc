@@ -63,7 +63,7 @@
                     Billing Staff
                 </a>
 
-                <a href="/admin/trendy-products"
+                <a href="{{route('admin.trendy-products.index')}}"
                    class="sidebar-item block px-6 py-3 text-gray-300 hover:text-white hover:bg-[var(--hover-color)] transition-all duration-200">
                     <i class="fas fa-fire mr-3"></i>
                     Trendy Products

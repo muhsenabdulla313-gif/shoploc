@@ -9,7 +9,7 @@ use App\Models\Staff;
 class StaffMessage extends Model
 {
     protected $fillable = [
-        'from_admin_id',
+        // 'from_admin_id',
         'to_staff_id',
         'message',
         'subject',

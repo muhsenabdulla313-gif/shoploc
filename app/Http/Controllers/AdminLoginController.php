@@ -127,4 +127,53 @@ public function login(){
 
 
     }
+    public function reset_new(Request $request){
+
+
+    $request->validate(['email' => 'required|email']);
+
+    $credentials = $request->only('email');
+    $staff = \App\Models\Staff::where('email', $credentials['email'])->first();
+
+    if (!$staff) {
+        return back()->withErrors(['email' => 'No admin account found with this email address.']);
+    }
+
+    $token = \Illuminate\Support\Str::random(60);
+
+    \Illuminate\Support\Facades\DB::table('staff_password_resets')->updateOrInsert(
+        ['email' => $credentials['email']],
+        [
+            'token' => \Illuminate\Support\Facades\Hash::make($token),
+            'created_at' => now(),
+        ]
+    );
+
+    $resetUrl = url('/admin/password/reset/' . urlencode($token) . '?email=' . urlencode($credentials['email']));
+
+    try {
+        Mail::send([], [], function ($message) use ($credentials, $resetUrl) {
+            $message->to($credentials['email'])
+                ->subject('Admin Password Reset')
+                ->html("
+                        <h2>Admin Password Reset Request</h2>
+                        <p>You are receiving this email because we received a password reset request for your admin account.</p>
+                        <p>Click the button below to reset your password:</p>
+                        <p><a href='{$resetUrl}' style='background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Reset Password</a></p>
+                        <p>If you did not request a password reset, no further action is required.</p>
+                        <p>This link will expire in 60 minutes.</p>
+                    ");
+        });
+
+        return back()->with('status', 'We have emailed your password reset link!');
+    } catch (\Exception $e) {
+        // Log the error for debugging
+        Log::error('Admin password reset email failed: ' . $e->getMessage());
+
+        // Even if email fails, we can still show success message for security
+        return back()->with('status', 'We have emailed your password reset link!');
+    }
+
+    }
+   
 }
