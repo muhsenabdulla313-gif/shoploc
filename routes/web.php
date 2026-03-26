@@ -180,6 +180,17 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'auth:admin'])
         Route::put('/products/{id}', [AdminProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{id}', [AdminProductController::class, 'destroy'])->name('products.destroy');
 
+
+
+    Route::get('/colors', [AdminProductController::class, 'colorindex']);
+    Route::post('/colors', [AdminProductController::class, 'colorstore']);
+
+
+
+
+
+
+
         Route::get('/categories', [AdminCategoryController::class, 'index'])->name('categories.list');
         Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
         Route::get('/categories/{id}', [AdminCategoryController::class, 'show'])->name('categories.show');

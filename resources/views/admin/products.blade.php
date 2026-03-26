@@ -6,453 +6,438 @@
 @section('page-title', 'Products Management')
 
 @section('content')
-<div class="space-y-6">
-    <!-- Header with Add Button -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 class="text-2xl font-bold text-gray-800">All Products</h2>
-        <button type="button" onclick="openAddProductModal()"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors flex items-center">
-            <i class="fas fa-plus mr-2"></i> Add New Product
-        </button>
-    </div>
-
-
-
-    <!-- Products Table -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-                </thead>
-
-                <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($products as $product)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <img class="h-10 w-10 rounded-md object-cover"
-                                         src="{{ $product->image ? asset('storage/' . $product->image) : 'https://via.placeholder.com/40x40' }}"
-                                         alt="{{ $product->name }}">
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ $product->name }}</div>
-                                    <div class="text-sm text-gray-500">{{ $product->category }}</div>
-                                </div>
-                            </div>
-                        </td>
-
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${{ number_format($product->price, 2) }}
-                            @if($product->original_price && $product->original_price > $product->price)
-                                <span class="block text-sm text-red-500 line-through">
-                                    ${{ number_format($product->original_price, 2) }}
-                                </span>
-                            @endif
-                        </td>
-
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                @if($product->stock > 10) bg-green-100 text-green-800
-                                @elseif($product->stock > 0) bg-yellow-100 text-yellow-800
-                                @else bg-red-100 text-red-800 @endif">
-                                {{ $product->stock }} in stock
-                            </span>
-                        </td>
-
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                @if($product->status == 'active') bg-green-100 text-green-800
-                                @else bg-red-100 text-red-800 @endif">
-                                {{ ucfirst($product->status) }}
-                            </span>
-                        </td>
-
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button type="button" onclick="viewProduct({{ $product->id }})"
-                                    class="text-green-600 hover:text-green-900 mr-3">
-                                <i class="fas fa-eye"></i>
-                            </button>
-
-                            <button type="button" onclick="editProduct({{ $product->id }})"
-                                    class="text-blue-600 hover:text-blue-900 mr-3">
-                                <i class="fas fa-edit"></i>
-                            </button>
-
-                            <button type="button" onclick="deleteProduct({{ $product->id }})"
-                                    class="text-red-600 hover:text-red-900">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                            No products found.
-                        </td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        @if(isset($products) && $products->hasPages())
-        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-            <div class="flex-1 flex justify-between sm:hidden">
-                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Previous
-                </a>
-                <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Next
-                </a>
-            </div>
-            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-sm text-gray-700">
-                        Showing <span class="font-medium">{{ $products->firstItem() }}</span>
-                        to <span class="font-medium">{{ $products->lastItem() }}</span>
-                        of <span class="font-medium">{{ $products->total() }}</span> results
-                    </p>
-                </div>
-                <div>
-                    {{ $products->links() }}
-                </div>
-            </div>
-        </div>
-        @endif
-    </div>
-</div>
-
-<!-- Add Category Modal -->
-<div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto mx-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-semibold">Add New Category</h3>
-            <button type="button" onclick="closeCategoryModal()" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times text-2xl"></i>
+    <div class="space-y-6">
+        <!-- Header with Add Button -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 class="text-2xl font-bold text-gray-800">All Products</h2>
+            <button type="button" onclick="openAddProductModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors flex items-center">
+                <i class="fas fa-plus mr-2"></i> Add New Product
             </button>
         </div>
 
-        <form id="categoryForm">
-            @csrf
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Category Name</label>
-                <input type="text" id="categoryName" name="name" required
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="Enter category name">
+
+
+        <!-- Products Table -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @forelse($products as $product)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <img class="h-10 w-10 rounded-md object-cover"
+                                                src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://via.placeholder.com/40x40' }}"
+                                                alt="{{ $product->name }}">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">{{ $product->name }}</div>
+                                            <div class="text-sm text-gray-500">{{ $product->category->name ?? '' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    ${{ number_format($product->price, 2) }}
+                                    @if($product->original_price && $product->original_price > $product->price)
+                                        <span class="block text-sm text-red-500 line-through">
+                                            ${{ number_format($product->original_price, 2) }}
+                                        </span>
+                                    @endif
+                                </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    @php
+                                        $totalStock = $product->variants->sum('stock');
+                                    @endphp
+
+                                    <span
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                                                                                                                                    @if($totalStock > 10) bg-green-100 text-green-800
+                                                                                                                                                    @elseif($totalStock > 0) bg-yellow-100 text-yellow-800
+                                                                                                                                                    @else bg-red-100 text-red-800 @endif">
+                                        {{ $totalStock }} in stock
+                                    </span>
+                                </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                                                                                                                                                            @if($product->status == 'active') bg-green-100 text-green-800
+                                                                                                                                                                            @else bg-red-100 text-red-800 @endif">
+                                        {{ ucfirst($product->status) }}
+                                    </span>
+                                </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button type="button" onclick="viewProduct({{ $product->id }})"
+                                        class="text-green-600 hover:text-green-900 mr-3">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+
+                                    <button type="button" onclick="editProduct({{ $product->id }})"
+                                        class="text-blue-600 hover:text-blue-900 mr-3">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+
+                                    <button type="button" onclick="deleteProduct({{ $product->id }})"
+                                        class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                    No products found.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
 
-            <div class="flex justify-end space-x-3">
-                <button type="button" onclick="closeCategoryModal()"
+            <!-- Pagination -->
+            @if(isset($products) && $products->hasPages())
+                <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                    <div class="flex-1 flex justify-between sm:hidden">
+                        <a href="#"
+                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Previous
+                        </a>
+                        <a href="#"
+                            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Next
+                        </a>
+                    </div>
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Showing <span class="font-medium">{{ $products->firstItem() }}</span>
+                                to <span class="font-medium">{{ $products->lastItem() }}</span>
+                                of <span class="font-medium">{{ $products->total() }}</span> results
+                            </p>
+                        </div>
+                        <div>
+                            {{ $products->links() }}
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Add New Category</h3>
+                <button type="button" onclick="openAddCategoryModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <form id="categoryForm">
+                @csrf
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Category Name</label>
+                    <input type="text" id="categoryName" name="name" class="w-full px-3 py-2 border rounded mb-3"
+                        placeholder="Category Name" required>
+
+                    <select name="parent_id" id="parentCategory" class="w-full px-3 py-2 border rounded mb-3">
+                        <option value="">Main Category</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeCategoryModal()"
                         class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                    Cancel
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                    Add Category
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Add/Edit Product Modal -->
-<div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h3 id="modalTitle" class="text-xl font-semibold">Add New Product</h3>
-            <button type="button" onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        Add Category
+                    </button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <form id="productForm" enctype="multipart/form-data">
-            @csrf
-            <input type="hidden" id="productId" name="id">
+    <div id="productModal" class="fixed inset-0 bg-black/50 hidden z-[9999] flex items-center justify-center p-4">
+        <div
+            style="background:#f7f6f4; border-radius:20px; box-shadow:0 32px 80px rgba(0,0,0,0.4); width:100%; max-width:820px; max-height:92vh; overflow-y:auto; overflow-x:hidden;">
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-                    <input type="text" id="productName" name="name" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <!-- HEADER -->
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.75rem; background:#0f0f0f; border-radius:20px 20px 0 0;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div
+                        style="width:36px; height:36px; background:rgba(255,255,255,0.08); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-box-open" style="color:#fff; font-size:14px;"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle"
+                            style="font-family:'DM Serif Display',serif; font-size:1.2rem; font-weight:400; color:#fff; letter-spacing:0.01em;">
+                            Add Product
+                        </h3>
+                        <p style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:1px; letter-spacing:0.02em;">Fill
+                            in the details to list a new item</p>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <div class="flex gap-2">
-                        <select id="productCategory" name="category" required
-                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select Category</option>
+                <button onclick="closeModal()"
+                    style="width:32px; height:32px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.5); font-size:14px; transition:all 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="productForm" enctype="multipart/form-data"
+                style="padding:1.5rem; display:flex; flex-direction:column; gap:1rem;">
+                @csrf
+                <input type="hidden" name="id" id="productId">
+
+                <!-- BASIC INFO CARD -->
+                <div style="background:#fff; padding:1.25rem; border-radius:14px; border:1px solid #ebebeb;">
+                    <div
+                        style="display:flex; align-items:center; gap:8px; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid #f2f2f2;">
+                        <span
+                            style="width:6px; height:6px; border-radius:50%; background:#0f0f0f; display:inline-block; flex-shrink:0;"></span>
+                        <h4
+                            style="font-size:11px; font-weight:600; color:#0f0f0f; letter-spacing:0.08em; text-transform:uppercase;">
+                            Basic Information</h4>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <label
+                                style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Product
+                                Name</label>
+                            <input type="text" name="name" placeholder="e.g. Silk Crew-Neck Tee"
+                                style="width:100%; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a;">
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <label
+                                style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Category</label>
+                            <div style="display:flex; gap:8px; align-items:stretch;">
+                                <select name="category_id" id="productCategory"
+                                    style="flex:1; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a; cursor:pointer;">
+                                </select>
+
+                                <button type="button" onclick="openAddCategoryModal()"
+                                    style="width:38px; background:#0f0f0f; color:#fff; border:none; border-radius:9px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.15s;">
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- PRICING CARD -->
+                <div style="background:#fff; padding:1.25rem; border-radius:14px; border:1px solid #ebebeb;">
+                    <div
+                        style="display:flex; align-items:center; gap:8px; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid #f2f2f2;">
+                        <span
+                            style="width:6px; height:6px; border-radius:50%; background:#0f0f0f; display:inline-block; flex-shrink:0;"></span>
+                        <h4
+                            style="font-size:11px; font-weight:600; color:#0f0f0f; letter-spacing:0.08em; text-transform:uppercase;">
+                            Pricing</h4>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
+
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <label
+                                style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Price</label>
+                            <input type="number" name="price" placeholder="0.00"
+                                style="width:100%; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a;">
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <label
+                                style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Original
+                                Price</label>
+                            <input type="number" name="original_price" placeholder="0.00"
+                                style="width:100%; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a;">
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:5px;">
+                            <label
+                                style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Shipping</label>
+                            <input type="number" name="shipping_charge" placeholder="0.00"
+                                style="width:100%; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a;">
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- COLOR IMAGES CARD -->
+                <div style="background:#fff; padding:1.25rem; border-radius:14px; border:1px solid #ebebeb;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid #f2f2f2;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span
+                                style="width:6px; height:6px; border-radius:50%; background:#0f0f0f; display:inline-block;"></span>
+                            <h4
+                                style="font-size:11px; font-weight:600; color:#0f0f0f; letter-spacing:0.08em; text-transform:uppercase;">
+                                Color Images</h4>
+                        </div>
+
+                        <button type="button" onclick="addColorImageRow()"
+                            style="font-size:11px; font-weight:500; padding:5px 12px; border-radius:6px; cursor:pointer; border:1px solid #e0e0e0; background:#fff; color:#444; letter-spacing:0.02em; display:flex; align-items:center; gap:4px; transition:all 0.15s;">
+                            + Add Color
+                        </button>
+                    </div>
+
+                    <div id="colorImageContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+
+                <!-- VARIANTS CARD -->
+                <div style="background:#fff; padding:1.25rem; border-radius:14px; border:1px solid #ebebeb;">
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid #f2f2f2;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span
+                                style="width:6px; height:6px; border-radius:50%; background:#0f0f0f; display:inline-block;"></span>
+                            <h4
+                                style="font-size:11px; font-weight:600; color:#0f0f0f; letter-spacing:0.08em; text-transform:uppercase;">
+                                Variants</h4>
+                        </div>
+
+                        <button type="button" onclick="addVariantRow()"
+                            style="font-size:11px; font-weight:500; padding:5px 12px; border-radius:6px; cursor:pointer; border:1px solid #e0e0e0; background:#fff; color:#444; letter-spacing:0.02em; display:flex; align-items:center; gap:4px; transition:all 0.15s;">
+                            + Add Variant
+                        </button>
+                    </div>
+
+                    <div id="variantContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+
+                <!-- STATUS + DESC -->
+                <div
+                    style="background:#fff; padding:1.25rem; border-radius:14px; border:1px solid #ebebeb; display:flex; flex-direction:column; gap:1rem;">
+
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <label
+                            style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Status</label>
+                        <select name="status"
+                            style="width:100%; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a; cursor:pointer;">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
                         </select>
-                        <button type="button" onclick="openAddCategoryModal()"
-                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md transition-colors flex items-center"
-                                title="Add New Category">
-                            <i class="fas fa-plus"></i>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <label
+                            style="font-size:11px; font-weight:500; color:#8a8880; letter-spacing:0.06em; text-transform:uppercase;">Description</label>
+                        <textarea name="description" rows="3"
+                            placeholder="Describe the product — materials, fit, key features…"
+                            style="width:100%; padding:0.6rem 0.875rem; background:#fafafa; border:1px solid #e8e8e8; border-radius:9px; font-size:13.5px; color:#1a1a1a; resize:vertical;"></textarea>
+                    </div>
+
+                </div>
+
+
+
+                <!-- FOOTER -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-top:0.5rem;">
+                    <span style="font-size:12px; color:#aaa;">All fields marked are required</span>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" onclick="closeModal()"
+                            style="padding:0.625rem 1.25rem; border:1px solid #e0e0e0; border-radius:9px; background:transparent; color:#666; cursor:pointer; font-size:13.5px; font-weight:500; transition:all 0.15s;">
+                            Cancel
+                        </button>
+
+                        <button type="submit"
+                            style="padding:0.625rem 1.75rem; border-radius:9px; border:none; background:#0f0f0f; color:#fff; cursor:pointer; font-size:13.5px; font-weight:500; letter-spacing:0.02em; display:flex; align-items:center; gap:7px; transition:all 0.15s;">
+                            <i class="fas fa-check" style="font-size:12px;"></i>
+                            Save Product
                         </button>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
-                    <input type="number" id="productPrice" name="price" step="0.01" min="0.01" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="0.00">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Original Price (₹)</label>
-                    <input type="number" id="productOriginalPrice" name="original_price" step="0.01" min="0"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="0.00">
-                    <p class="text-xs text-gray-500 mt-1">Optional - for showing discounted prices</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Shipping Charge (₹)</label>
-                    <input type="number" id="productShippingCharge" name="shipping_charge" step="0.01" min="0"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="0.00">
-                    <p class="text-xs text-gray-500 mt-1">Enter shipping charge (optional, defaults to ₹0.00)</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
-                    <input type="number" id="productStock" name="stock" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select id="productStatus" name="status" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea id="productDescription" name="description" rows="3"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Colors (comma separated)</label>
-                    <input type="text" id="productColors" name="colors" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="red,blue,green">
-                    <p class="text-xs text-gray-500 mt-1">Enter colors separated by commas (e.g., red,blue,green)</p>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sizes (comma separated)</label>
-                    <input type="text" id="productSizes" name="sizes" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="S,M,L,XL"
-                           onchange="generateSizePriceFields()">
-                    <p class="text-xs text-gray-500 mt-1">Enter sizes separated by commas (e.g., S,M,L,XL)</p>
-                </div>
-
-                <div class="md:col-span-2" id="sizePricesSection" style="display: none;">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Size Prices</label>
-                    <div id="sizePricesContainer" class="space-y-2">
-                        <!-- Size price fields will be generated here -->
-                    </div>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Main Image</label>
-                    <input type="file" id="mainImage" name="main_image" accept="image/*"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-xs text-gray-500 mt-1">This will be the primary product image</p>
-
-                    <div id="mainImagePreview" class="mt-3 hidden">
-                        <img id="mainPreviewImg" src="" alt="Main Image Preview"
-                             class="h-32 w-32 object-cover rounded-md border">
-                    </div>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Additional Images (Multiple)</label>
-                    <input type="file" id="productImages" name="images[]" accept="image/*" multiple
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-xs text-gray-500 mt-1">Ctrl/Cmd hold cheyth select multiple images</p>
-
-                    <div id="imagesPreview"
-                         class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 hidden">
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" onclick="closeModal()"
-                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                    Cancel
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    Save Product
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
-</div>
+    <div id="colorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-md w-full max-w-md">
+            <h3 class="text-lg font-bold mb-3">Add Color</h3>
+
+            <form id="colorForm">
+                @csrf
+
+                <input type="text" name="name" placeholder="Color Name" class="border p-2 w-full mb-3" required>
+
+                <input type="color" name="code" class="w-full h-10 mb-3 cursor-pointer border rounded" value="#000000"
+                    required>
+
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeColorModal()">Cancel</button>
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
 
 
-{{-- IMPORTANT: put JS in scripts stack (layout must have @stack('scripts') before </body>) --}}
 @push('scripts')
-<script>
-/** Helper: CSRF token (layout head must have meta csrf-token) */
-function getCsrfToken() {
-    const el = document.querySelector('meta[name="csrf-token"]');
-    return el ? el.getAttribute('content') : '';
-}
+    <script>
 
-/** Modal open/close (Tailwind hidden + display flex) */
-function openModal(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-}
-function closeModalById(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.style.display = 'none';
-}
+        let colorIndex = 0;
+        let selectedColors = new Set();
+        function addColorImageRow() {
+            const container = document.getElementById('colorImageContainer');
 
-/** Category modal */
-function openAddCategoryModal() {
-    const form = document.getElementById('categoryForm');
-    if (form) form.reset();
+            const html = `
+                                            <div class="border p-3 rounded-md mb-3 color-row">
 
-    closeModalById('productModal');
-    openModal('categoryModal');
-}
-function closeCategoryModal() {
-    openModal('productModal'); // reopen product modal (optional)
-    closeModalById('categoryModal');
-}
+                                                <div class="flex gap-2 mb-2">
+                                                    <select name="color_images[${colorIndex}][color_id]" 
+                                                        class="color-select border p-2 flex-1"
+                                                        onchange="updateSelectedColors()"></select>
 
-/** Product modal */
-function openAddProductModal() {
-    const form = document.getElementById('productForm');
-    if (form) form.reset();
+                                                    <button type="button" onclick="openColorModal()" 
+                                                        class="bg-green-600 text-white px-3 rounded-md">+</button>
+                                                </div>
 
-    const title = document.getElementById('modalTitle');
-    if (title) title.textContent = 'Add New Product';
+                                                <input type="file" name="color_images[${colorIndex}][images][]" multiple class="border p-2">
 
-    const productId = document.getElementById('productId');
-    if (productId) productId.value = '';
+                                                <button type="button" onclick="removeColorRow(this)" 
+                                                    class="bg-red-500 text-white px-2 mt-2">Remove</button>
+                                            </div>
+                                        `;
 
-    // Reset previews
-    const mainPreviewWrap = document.getElementById('mainImagePreview');
-    const mainPreviewImg  = document.getElementById('mainPreviewImg');
-    if (mainPreviewWrap) mainPreviewWrap.classList.add('hidden');
-    if (mainPreviewImg) mainPreviewImg.src = '';
+            container.insertAdjacentHTML('beforeend', html);
 
-    const imagesPreview = document.getElementById('imagesPreview');
-    if (imagesPreview) {
-        imagesPreview.classList.add('hidden');
-        imagesPreview.innerHTML = '';
-    }
+            const selects = container.querySelectorAll('.color-select');
+            loadColors(selects[selects.length - 1]);
 
-    openModal('productModal');
-}
-function closeModal() {
-    closeModalById('productModal');
-}
-
-/** Load categories from backend */
-function loadCategories() {
-    const categorySelect = document.getElementById('productCategory');
-    if (!categorySelect) return;
-
-    fetch('/admin/categories')
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) return;
-
-            categorySelect.innerHTML = '<option value="">Select Category</option>';
-            data.data.forEach(category => {
-                const opt = document.createElement('option');
-                opt.value = category.name;
-                opt.textContent = category.name;
-                categorySelect.appendChild(opt);
-            });
-        })
-        .catch(err => console.error('Error loading categories:', err));
-}
-
-/** Generate size price fields dynamically */
-function generateSizePriceFields() {
-    const sizesInput = document.getElementById('productSizes');
-    const sizePricesSection = document.getElementById('sizePricesSection');
-    const sizePricesContainer = document.getElementById('sizePricesContainer');
-    
-    if (!sizesInput || !sizePricesSection || !sizePricesContainer) return;
-    
-    const sizesValue = sizesInput.value.trim();
-    
-    if (sizesValue) {
-        const sizes = sizesValue.split(',').map(size => size.trim()).filter(size => size);
-        
-        if (sizes.length > 0) {
-            sizePricesSection.style.display = 'block';
-                
-            let html = '';
-            sizes.forEach(size => {
-                html += `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2 p-3 border rounded-md bg-gray-50">
-                        <div class="flex items-center gap-2">
-                            <label class="w-20 text-sm font-medium text-gray-700">${size} Price:</label>
-                            <input 
-                                type="number" 
-                                data-size="${size}"
-                                data-type="regular"
-                                name="size_prices[${size}][price]"
-                                step="0.01"
-                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Regular price for ${size}">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label class="w-20 text-sm font-medium text-gray-700">${size} Orig:</label>
-                            <input 
-                                type="number" 
-                                data-size="${size}"
-                                data-type="original"
-                                name="size_prices[${size}][original_price]"
-                                step="0.01"
-                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Original price for ${size}">
-                        </div>
-                    </div>
-                `;
-            });
-                
-            sizePricesContainer.innerHTML = html;
-        } else {
-            sizePricesSection.style.display = 'none';
-            sizePricesContainer.innerHTML = '';
+            colorIndex++;
         }
-    } else {
-        sizePricesSection.style.display = 'none';
-        sizePricesContainer.innerHTML = '';
-    }
-}
 
-/** Actions */
-function editProduct(id) {
+        function editProduct(id) {
+
     fetch(`/admin/products/${id}`)
         .then(r => r.json())
         .then(data => {
@@ -463,90 +448,41 @@ function editProduct(id) {
 
             const product = data.data;
 
+            // ✅ BASIC
             document.getElementById('modalTitle').textContent = 'Edit Product';
-            document.getElementById('productId').value = product.id || '';
-            document.getElementById('productName').value = product.name || '';
-            document.getElementById('productCategory').value = product.category || '';
-            document.getElementById('productPrice').value = product.price || '';
-            document.getElementById('productShippingCharge').value = product.shipping_charge || '';
-            document.getElementById('productOriginalPrice').value = product.original_price || '';
-            document.getElementById('productStock').value = product.stock || '';
-            document.getElementById('productStatus').value = product.status || 'active';
-            document.getElementById('productDescription').value = product.description || '';
-            document.getElementById('productColors').value = Array.isArray(product.colors) ? product.colors.join(',') : (product.colors || '');
-            document.getElementById('productSizes').value = Array.isArray(product.sizes) ? product.sizes.join(',') : (product.sizes || '');
-            
-            // Populate size prices if they exist
-            if (product.size_prices && typeof product.size_prices === 'object') {
-                // Trigger the generation of size price fields
-                generateSizePriceFields();
-                
-                // Wait a bit for the fields to be generated, then populate them
-                setTimeout(() => {
-                    const sizePricesContainer = document.getElementById('sizePricesContainer');
-                    if (sizePricesContainer) {
-                        // Loop through the size prices and populate the fields
-                        for (const size in product.size_prices) {
-                            const sizePriceData = product.size_prices[size];
-                            
-                            // Handle both the old format (direct price) and new format (object with price/original_price)
-                            if (typeof sizePriceData === 'object') {
-                                // New format: {price: ..., original_price: ...}
-                                const regularField = sizePricesContainer.querySelector(`input[data-size="${size}"][data-type="regular"]`);
-                                const originalField = sizePricesContainer.querySelector(`input[data-size="${size}"][data-type="original"]`);
-                                
-                                if (regularField && sizePriceData.price !== undefined) {
-                                    regularField.value = sizePriceData.price;
-                                }
-                                if (originalField && sizePriceData.original_price !== undefined) {
-                                    originalField.value = sizePriceData.original_price;
-                                }
-                            } else {
-                                // Old format: direct price value
-                                const regularField = sizePricesContainer.querySelector(`input[data-size="${size}"][data-type="regular"]`);
-                                if (regularField) {
-                                    regularField.value = sizePriceData;
-                                }
-                            }
-                        }
-                    }
-                }, 100);
-            } else {
-                // Just trigger the generation of size price fields based on sizes
-                generateSizePriceFields();
+            document.getElementById('productId').value = product.id;
+            document.querySelector('[name="name"]').value = product.name || '';
+            document.getElementById('productCategory').value = product.category_id || '';
+            document.querySelector('[name="price"]').value = product.price || '';
+            document.querySelector('[name="shipping_charge"]').value = product.shipping_charge || '';
+            document.querySelector('[name="original_price"]').value = product.original_price || '';
+            document.querySelector('[name="status"]').value = product.status || 'active';
+            document.querySelector('[name="description"]').value = product.description || '';
+
+            // ✅ CLEAR OLD
+            document.getElementById('colorImageContainer').innerHTML = '';
+            document.getElementById('variantContainer').innerHTML = '';
+
+            // ✅ LOAD COLOR IMAGES
+            if (product.color_images) {
+                product.color_images.forEach(ci => {
+
+                    addColorImageRow();
+
+                    let lastRow = document.querySelectorAll('.color-row');
+                    lastRow = lastRow[lastRow.length - 1];
+
+                    const select = lastRow.querySelector('.color-select');
+                    setTimeout(() => {
+                        select.value = ci.color_id;
+                    }, 200);
+                });
             }
 
-            // Previews reset
-            const mainPreviewWrap = document.getElementById('mainImagePreview');
-            const mainPreviewImg  = document.getElementById('mainPreviewImg');
-            const imagesPreview   = document.getElementById('imagesPreview');
-
-            if (mainPreviewWrap) mainPreviewWrap.classList.add('hidden');
-            if (imagesPreview) {
-                imagesPreview.classList.add('hidden');
-                imagesPreview.innerHTML = '';
-            }
-
-            // main image
-            if (product.image && mainPreviewImg && mainPreviewWrap) {
-                mainPreviewImg.src = `/storage/${product.image}`;
-                mainPreviewWrap.classList.remove('hidden');
-            }
-
-            // gallery images (optional)
-            if (Array.isArray(product.gallery_images) && product.gallery_images.length > 0 && imagesPreview) {
-                imagesPreview.classList.remove('hidden');
-                product.gallery_images.forEach((path, idx) => {
-                    const div = document.createElement('div');
-                    div.className = 'relative';
-
-                    const img = document.createElement('img');
-                    img.src = `/storage/${path}`;
-                    img.alt = `Preview ${idx+1}`;
-                    img.className = 'h-24 w-full object-cover rounded-md border';
-
-                    div.appendChild(img);
-                    imagesPreview.appendChild(div);
+            // ✅ LOAD VARIANTS
+            if (product.variants) {
+                product.variants.forEach(v => {
+                    addVariantRow(v.size, v.color_id, v.stock);
                 });
             }
 
@@ -558,377 +494,498 @@ function editProduct(id) {
         });
 }
 
-function deleteProduct(id) {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-
-    fetch(`/admin/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': getCsrfToken()
+        function removeColorRow(btn) {
+            btn.parentElement.remove();
+            updateSelectedColors();
         }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) location.reload();
-        else alert('Error deleting: ' + (data.message || 'Unknown error'));
-    })
-    .catch(err => {
-        console.error(err);
-        alert('Network error while deleting');
-    });
-}
+        function updateSelectedColors() {
+            selectedColors.clear();
 
-function viewProduct(id) {
-    fetch(`/admin/products/${id}`)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) {
-                alert(data.message || 'Error loading product');
-                return;
-            }
-
-            const product = data.data;
-
-            closeViewModal();
-
-            const modalHtml = `
-            <div id="viewProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div class="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto mx-auto">
-                <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-xl font-semibold">Product Details</h3>
-                  <button type="button" onclick="closeViewModal()" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-2xl"></i>
-                  </button>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 class="text-lg font-medium text-gray-700 mb-2">Product Image</h4>
-                    <div class="border rounded-md p-2">
-                      <img src="${product.image ? '/storage/' + product.image : 'https://via.placeholder.com/300x300'}"
-                           alt="${product.name || ''}"
-                           class="w-full h-64 object-contain rounded">
-                    </div>
-
-                    ${
-                      product.gallery_images && product.gallery_images.length > 0
-                      ? `<div class="mt-4">
-                           <h5 class="text-md font-medium text-gray-700 mb-2">Additional Images</h5>
-                           <div class="flex flex-wrap gap-2">
-                             ${product.gallery_images.map(img => `
-                               <img src="/storage/${img}" alt="Additional" class="w-20 h-20 object-cover rounded border">
-                             `).join('')}
-                           </div>
-                         </div>`
-                      : ''
-                    }
-                  </div>
-
-                  <div>
-                    <div class="mb-3">
-                      <div class="text-sm text-gray-500">Name</div>
-                      <div class="text-gray-900 font-semibold">${product.name || ''}</div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <div class="text-sm text-gray-500">Category</div>
-                        <div class="text-gray-900">${product.category || 'N/A'}</div>
-                      </div>
-                      <div>
-                        <div class="text-sm text-gray-500">Subcategory</div>
-                        <div class="text-gray-900">${product.subcategory || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <div class="text-sm text-gray-500">Price</div>
-                        <div class="text-gray-900">$${product.price ? parseFloat(product.price).toFixed(2) : '0.00'}</div>
-                      </div>
-                      <div>
-                        <div class="text-sm text-gray-500">Original Price</div>
-                        <div class="text-gray-900">${product.original_price ? ('$' + parseFloat(product.original_price).toFixed(2)) : 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <div class="text-sm text-gray-500">Stock</div>
-                        <div class="text-gray-900">${product.stock ?? 'N/A'}</div>
-                      </div>
-                      <div>
-                        <div class="text-sm text-gray-500">Status</div>
-                        <div class="text-gray-900">${product.status || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    <div class="mb-3">
-                      <div class="text-sm text-gray-500">Description</div>
-                      <div class="text-gray-900">${product.description || 'N/A'}</div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <div class="text-sm text-gray-500">Colors</div>
-                        <div class="text-gray-900">${Array.isArray(product.colors) ? product.colors.join(', ') : (product.colors || 'N/A')}</div>
-                      </div>
-                      <div>
-                        <div class="text-sm text-gray-500">Sizes</div>
-                        <div class="text-gray-900">${Array.isArray(product.sizes) ? product.sizes.join(', ') : (product.sizes || 'N/A')}</div>
-                      </div>
-                    </div>
-
-                    ${
-                      product.size_prices && typeof product.size_prices === 'object' && Object.keys(product.size_prices).length > 0
-                      ? `<div class="mb-3">
-                           <div class="text-sm text-gray-500">Size Prices</div>
-                           <div class="text-gray-900">
-                             ${Object.entries(product.size_prices).map(([size, price]) => `${size}: $${parseFloat(price).toFixed(2)}`).join('<br>')}
-                           </div>
-                         </div>`
-                      : ''
-                    }
-
-                    <div class="mt-5 flex justify-end">
-                      <button type="button" onclick="closeViewModal()"
-                              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>`;
-
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Network error while loading product');
-        });
-}
-
-function closeViewModal() {
-    const modal = document.getElementById('viewProductModal');
-    if (modal) modal.remove();
-}
-
-/** DOM Ready: attach listeners safely (null-check) */
-document.addEventListener('DOMContentLoaded', () => {
-    // Make sure modals display none by default
-    closeModalById('productModal');
-    closeModalById('categoryModal');
-
-    loadCategories();
-
-    const mainImageEl = document.getElementById('mainImage');
-    if (mainImageEl) {
-        mainImageEl.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const wrap = document.getElementById('mainImagePreview');
-            const img  = document.getElementById('mainPreviewImg');
-            if (!wrap || !img) return;
-
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    img.src = ev.target.result;
-                    wrap.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            } else {
-                wrap.classList.add('hidden');
-                img.src = '';
-            }
-        });
-    }
-
-    const productImagesEl = document.getElementById('productImages');
-    if (productImagesEl) {
-        productImagesEl.addEventListener('change', function(e) {
-            const files = Array.from(e.target.files || []);
-            const preview = document.getElementById('imagesPreview');
-            if (!preview) return;
-
-            preview.innerHTML = '';
-
-            if (files.length === 0) {
-                preview.classList.add('hidden');
-                return;
-            }
-
-            preview.classList.remove('hidden');
-
-            files.forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const div = document.createElement('div');
-                    div.className = 'relative';
-
-                    const img = document.createElement('img');
-                    img.src = ev.target.result;
-                    img.alt = `Preview ${index + 1}`;
-                    img.className = 'h-24 w-full object-cover rounded-md border';
-
-                    div.appendChild(img);
-                    preview.appendChild(div);
-                };
-                reader.readAsDataURL(file);
-            });
-        });
-    }
-
-    const categoryForm = document.getElementById('categoryForm');
-    if (categoryForm) {
-        categoryForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const name = (document.getElementById('categoryName')?.value || '').trim();
-            if (!name) return;
-
-            const formData = new FormData(this);
-
-            fetch('/admin/categories', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRF-TOKEN': getCsrfToken() }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) {
-                    alert(data.message || 'Error adding category');
-                    return;
+            document.querySelectorAll('#colorImageContainer .color-select').forEach(select => {
+                if (select.value) {
+                    selectedColors.add(select.value);
                 }
-
-                // reload categories and select new
-                loadCategories();
-                setTimeout(() => {
-                    const sel = document.getElementById('productCategory');
-                    if (sel) sel.value = data.data.name;
-                }, 200);
-
-                alert('Category added successfully!');
-                closeModalById('categoryModal');
-                openModal('productModal');
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Network error while adding category');
             });
-        });
-    }
 
-    const productForm = document.getElementById('productForm');
-    if (productForm) {
-        productForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            refreshVariantColorOptions();
+        }
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
 
-            // Process colors and sizes from comma-separated strings to arrays
-            const colorsInput = document.getElementById('productColors');
-            const sizesInput = document.getElementById('productSizes');
-            
-            const formData = new FormData(this);
-            
-            // Convert colors to array if provided
-            if (colorsInput && colorsInput.value.trim()) {
-                const colorsArray = colorsInput.value.split(',').map(color => color.trim()).filter(color => color);
-                // Remove the original string value
-                formData.delete('colors');
-                // Add each color as a separate array element
-                colorsArray.forEach((color, index) => {
-                    formData.append('colors[]', color);
+        function viewProduct(id) {
+            fetch(`/admin/products/${id}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert(data.message || 'Error loading product');
+                        return;
+                    }
+
+                    const product = data.data;
+
+                    closeViewModal();
+
+
+                    let colorImagesHtml = '';
+
+                    if (product.color_images && product.color_images.length > 0) {
+                        colorImagesHtml = product.color_images.map(ci => `
+                                        <div class="mb-4">
+                                            <div class="font-medium text-gray-700 mb-2">
+                                                ${ci.color_name}
+                                            </div>
+                                            <div class="flex gap-2 flex-wrap">
+                                                ${ci.images.map(img => `
+                                                    <img src="/storage/${img}" 
+                                                         class="w-20 h-20 object-cover rounded border">
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    `).join('');
+                    }
+
+                    // ✅ VARIANTS TABLE
+                    let variantsHtml = '';
+
+                    if (product.variants && product.variants.length > 0) {
+                        variantsHtml = `
+                                        <table class="w-full text-sm border mt-3">
+                                            <thead class="bg-gray-100">
+                                                <tr>
+                                                    <th class="p-2 border">Size</th>
+                                                    <th class="p-2 border">Color</th>
+                                                    <th class="p-2 border">Stock</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${product.variants.map(v => `
+                                                    <tr>
+                                                        <td class="p-2 border">${v.size}</td>
+                                                        <td class="p-2 border">${v.color_name}</td>
+                                                        <td class="p-2 border">${v.stock}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    `;
+                    }
+
+                    const modalHtml = `
+                                    <div id="viewProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                      <div class="bg-white rounded-xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+
+                                        <div class="flex justify-between items-center mb-4">
+                                          <h3 class="text-xl font-semibold">Product Details</h3>
+                                          <button onclick="closeViewModal()" class="text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-times text-2xl"></i>
+                                          </button>
+                                        </div>
+
+                                        <div class="grid md:grid-cols-2 gap-6">
+
+                                            <!-- LEFT -->
+                                            <div>
+                                                <h4 class="font-medium mb-2">Color Images</h4>
+                                                ${colorImagesHtml || '<p class="text-gray-500">No images</p>'}
+                                            </div>
+
+                                            <!-- RIGHT -->
+                                            <div>
+
+                                                <div class="mb-3">
+                                                    <div class="text-sm text-gray-500">Name</div>
+                                                    <div class="font-semibold">${product.name}</div>
+                                                </div>
+
+                                                <div class="grid grid-cols-2 gap-4 mb-3">
+                                                   <div class="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <div class="text-sm text-gray-500">Category</div>
+                    <div>${product.category || ''}</div>
+                </div>
+
+                <div>
+                    <div class="text-sm text-gray-500">Subcategory</div>
+                    <div>${product.subcategory || ''}</div>
+                </div>
+            </div>
+                                                    <div>
+                                                        <div class="text-sm text-gray-500">Price</div>
+                                                        <div>$${parseFloat(product.price).toFixed(2)}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="grid grid-cols-2 gap-4 mb-3">
+                                                    <div>
+                                                        <div class="text-sm text-gray-500">Original Price</div>
+                                                        <div>${product.original_price ? '$' + parseFloat(product.original_price).toFixed(2) : 'N/A'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-sm text-gray-500">Status</div>
+                                                        <div>${product.status}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <div class="text-sm text-gray-500">Description</div>
+                                                    <div>${product.description || 'N/A'}</div>
+                                                </div>
+
+                                                <div class="mt-4">
+                                                    <div class="text-sm text-gray-500 mb-1">Variants</div>
+                                                    ${variantsHtml || '<p class="text-gray-500">No variants</p>'}
+                                                </div>
+
+                                                <div class="mt-5 text-right">
+                                                    <button onclick="closeViewModal()"
+                                                        class="px-4 py-2 border rounded-md hover:bg-gray-100">
+                                                        Close
+                                                    </button>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                `;
+
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Network error');
                 });
-            } else {
-                formData.delete('colors');
-            }
-            
-            // Convert sizes to array if provided and handle size prices
-            if (sizesInput && sizesInput.value.trim()) {
-                const sizesArray = sizesInput.value.split(',').map(size => size.trim()).filter(size => size);
-                // Remove the original string value
-                formData.delete('sizes');
-                // Add each size as a separate array element
-                sizesArray.forEach((size, index) => {
-                    formData.append('sizes[]', size);
+        }
+        function closeViewModal() {
+            const modal = document.getElementById('viewProductModal');
+            if (modal) modal.remove();
+        }
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeModalById(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        function loadParentCategories() {
+            fetch('/admin/categories')
+                .then(res => res.json())
+                .then(data => {
+                    const select = document.getElementById('parentCategory');
+                    select.innerHTML = '<option value="">Main Category</option>';
+
+                    data.data.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        select.appendChild(opt);
+                    });
                 });
-                
-                // Also collect size-specific prices if they exist
-                const sizePricesContainer = document.getElementById('sizePricesContainer');
-                if (sizePricesContainer) {
-                    const sizeGroups = sizePricesContainer.querySelectorAll('.grid.grid-cols-1');
-                    sizeGroups.forEach(group => {
-                        const regularInput = group.querySelector('input[data-type="regular"]');
-                        const originalInput = group.querySelector('input[data-type="original"]');
-                        
-                        if (regularInput) {
-                            const size = regularInput.getAttribute('data-size');
-                            const regularPrice = regularInput.value;
-                            if (size && regularPrice) {
-                                // Add regular price
-                                formData.append(`size_prices[${size}][price]`, regularPrice);
-                            }
-                        }
-                        
-                        if (originalInput) {
-                            const size = originalInput.getAttribute('data-size');
-                            const originalPrice = originalInput.value;
-                            if (size && originalPrice) {
-                                // Add original price
-                                formData.append(`size_prices[${size}][original_price]`, originalPrice);
-                            }
+        } // CATEGORY MODAL
+        function openAddCategoryModal() {
+            document.getElementById('categoryForm')?.reset();
+            loadParentCategories();
+
+            closeModalById('productModal');
+            openModal('categoryModal');
+        }
+
+        function closeCategoryModal() {
+            closeModalById('categoryModal');
+            openModal('productModal');
+        }
+
+        // PRODUCT MODAL
+        function openAddProductModal() {
+            const form = document.getElementById('productForm');
+            form?.reset();
+
+            document.getElementById('modalTitle').textContent = 'Add New Product';
+            document.getElementById('productId').value = '';
+
+
+
+
+
+            loadCategories(); // important
+            openModal('productModal');
+        }
+
+        function closeModal() {
+            closeModalById('productModal');
+        }
+
+        // LOAD CATEGORIES (ONLY ONE VERSION ✅)
+        function loadCategories() {
+            const categorySelect = document.getElementById('productCategory');
+            if (!categorySelect) return;
+
+            fetch('/admin/categories')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+
+                    categorySelect.innerHTML = '<option value="">Select Category</option>';
+
+                    data.data.forEach(category => {
+                        const parentOption = document.createElement('option');
+                        parentOption.value = category.id;
+                        parentOption.textContent = category.name;
+                        categorySelect.appendChild(parentOption);
+
+                        if (category.children) {
+                            category.children.forEach(child => {
+                                const childOpt = document.createElement('option');
+                                childOpt.value = child.id;
+                                childOpt.textContent = '-- ' + child.name;
+                                categorySelect.appendChild(childOpt);
+                            });
                         }
                     });
+                })
+                .catch(err => console.error('Category load error:', err));
+        }
+
+        // VARIANTS
+        function addVariantRow(size = '', color_id = '', stock = '') {
+            const container = document.getElementById('variantContainer');
+
+            const html = `
+                                        <div class="grid grid-cols-4 gap-3 border p-3 rounded-md variant-row">
+                                            <input type="text" name="variants[size][]" value="${size}" placeholder="Size" class="px-2 py-1 border rounded-md">
+
+                                            <select name="variants[color_id][]" class="px-2 py-1 border rounded-md variant-color"></select>
+
+                                            <input type="number" name="variants[stock][]" value="${stock}" placeholder="Stock" class="px-2 py-1 border rounded-md">
+
+                                            <button type="button" onclick="this.parentElement.remove()" class="bg-red-500 text-white px-2 rounded-md">X</button>
+                                        </div>
+                                    `;
+
+            container.insertAdjacentHTML('beforeend', html);
+
+            const select = container.querySelectorAll('.variant-color');
+            populateVariantColors(select[select.length - 1]);
+        }
+
+
+
+        function populateVariantColors(selectElement) {
+            selectElement.innerHTML = '<option value="">Select Color</option>';
+
+            document.querySelectorAll('#colorImageContainer .color-select').forEach(select => {
+                if (select.value) {
+                    const text = select.options[select.selectedIndex].text;
+
+                    const opt = document.createElement('option');
+                    opt.value = select.value;
+                    opt.textContent = text;
+
+                    selectElement.appendChild(opt);
                 }
-            } else {
-                formData.delete('sizes');
-                // Also remove any size_prices if no sizes are provided
-                formData.delete('size_prices');
+            });
+        }
+        function validateVariants() {
+            const combinations = new Set();
+            let valid = true;
+
+            document.querySelectorAll('.variant-row').forEach(row => {
+                const size = row.querySelector('input[name="variants[size][]"]').value;
+                const color = row.querySelector('.variant-color').value;
+
+                const key = size + '-' + color;
+
+                if (combinations.has(key)) {
+                    if (combinations.has(key)) {
+                        alert('Duplicate variant: same size and color already added!');
+                        return false;
+                    }
+                }
+
+                combinations.add(key);
+            });
+
+            return valid;
+        }
+        function refreshVariantColorOptions() {
+            document.querySelectorAll('.variant-color').forEach(select => {
+                populateVariantColors(select);
+            });
+        }
+
+
+        function loadColors(selectElement) {
+            fetch('/admin/colors')
+                .then(res => res.json())
+                .then(data => {
+                    selectElement.innerHTML = '<option value="">Select Color</option>';
+
+                    data.data.forEach(color => {
+                        const opt = document.createElement('option');
+                        opt.value = color.id;
+                        opt.textContent = color.name;
+                        selectElement.appendChild(opt);
+                    });
+                });
+        }
+        // SIZE PRICE GENERATION
+        function generateSizePriceFields() {
+            const sizesInput = document.getElementById('productSizes');
+            const container = document.getElementById('sizePricesContainer');
+
+            if (!sizesInput || !container) return;
+
+            const sizes = sizesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+
+            if (!sizes.length) {
+                container.innerHTML = '';
+                return;
             }
 
-            const id = document.getElementById('productId')?.value;
+            let html = '';
 
-            const url = id ? `/admin/products/${id}` : '/admin/products';
-            const method = id ? 'POST' : 'POST'; // use POST with _method for Laravel
+            sizes.forEach(size => {
+                html += `
+                                                                        <div class="grid grid-cols-2 gap-2 mb-2">
+                                                                            <input type="number" name="size_prices[${size}][price]" placeholder="${size} price" class="border p-2 rounded">
+                                                                            <input type="number" name="size_prices[${size}][original_price]" placeholder="${size} original" class="border p-2 rounded">
+                                                                        </div>
+                                                                    `;
+            });
 
-            if (id) formData.append('_method', 'PUT');
+            container.innerHTML = html;
+        }
 
-            fetch(url, {
-                method: method,
-                body: formData,
+        // DELETE
+        function deleteProduct(id) {
+            if (!confirm('Delete this product?')) return;
+
+            fetch(`/admin/products/${id}`, {
+                method: 'DELETE',
                 headers: { 'X-CSRF-TOKEN': getCsrfToken() }
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Product saved successfully!');
-                    closeModal();
-                    location.reload();
-                    return;
-                }
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                    else alert('Error deleting');
+                });
+        }
+        function openColorModal() {
+            openModal('colorModal');
+        }
 
-                if (data.errors) {
-                    let msg = 'Validation errors:\n';
-                    for (const k in data.errors) msg += `- ${k}: ${data.errors[k].join(', ')}\n`;
-                    alert(msg);
-                } else {
-                    // Show detailed error message
-                    let errorMsg = 'Error saving product: ' + (data.message || 'Unknown error');
-                    if (data.error_details) {
-                        errorMsg += '\n\nDetails:\n';
-                        errorMsg += `Message: ${data.error_details.message}\n`;
-                        errorMsg += `File: ${data.error_details.file}\n`;
-                        errorMsg += `Line: ${data.error_details.line}`;
-                    }
-                    alert(errorMsg);
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Network error while saving product');
+        function closeColorModal() {
+            closeModalById('colorModal');
+        }
+        // DOM READY
+        document.addEventListener('DOMContentLoaded', () => {
+
+            closeModalById('productModal');
+            closeModalById('categoryModal');
+
+            loadCategories();
+
+
+
+
+            // CATEGORY SUBMIT
+            document.getElementById('categoryForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const formData = new FormData(this);
+
+                fetch('/admin/categories', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRF-TOKEN': getCsrfToken() }
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) return alert('Error');
+
+                        loadCategories();
+                        alert('Category added');
+
+                        closeModalById('categoryModal');
+                        openModal('productModal');
+                    });
             });
-        });
-    }
-});
-</script>
-@endpush
 
+
+            document.addEventListener('submit', function (e) {
+                if (e.target && e.target.id === 'colorForm') {
+                    e.preventDefault();
+
+                    const formData = new FormData(e.target);
+
+                    fetch('/admin/colors', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-CSRF-TOKEN': getCsrfToken() }
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (!data.success) return alert('Error');
+
+                            alert('Color added');
+
+                            closeColorModal();
+
+                            document.querySelectorAll('.color-select').forEach(select => {
+                                loadColors(select);
+                            });
+                        });
+                }
+            });
+
+
+
+            // PRODUCT SUBMIT
+            document.getElementById('productForm')?.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (!validateVariants()) return;
+
+                const formData = new FormData(this);
+                const id = document.getElementById('productId').value;
+
+                if (id) formData.append('_method', 'PUT');
+
+                fetch(id ? `/admin/products/${id}` : '/admin/products', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRF-TOKEN': getCsrfToken() }
+                })
+                    .then(async r => {
+                        const data = await r.json();
+
+                        if (!data.success) {
+                            console.error('FULL ERROR:', data);
+
+                            if (data.errors) {
+                                alert(JSON.stringify(data.errors, null, 2)); // validation errors
+                            } else {
+                                alert(data.message || data.error || 'Unknown error');
+                            }
+                            return;
+                        }
+
+                        alert('Saved successfully');
+                        location.reload();
+                    })
+                    .catch(err => {
+                        console.error('FETCH ERROR:', err);
+                        alert('Something broke. Check console.');
+                    });
+            });
+
+        });
+    </script>
+@endpush

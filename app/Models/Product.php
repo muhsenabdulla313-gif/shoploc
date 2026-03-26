@@ -7,48 +7,43 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    use HasFactory;
 
-    protected $table = 'products';
+protected $fillable = [
+'category_id',
+'name',
+'slug',
+'price',
+'original_price',
+'badge',
+'trend_type',
+'rating',
+'shipping_charge',
+'description',
+'status'
+];
 
-    // ✅ DB has created_at & updated_at (snake_case)
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
+public function variants()
+{
+return $this->hasMany(ProductVariant::class);
+}
 
-    // ✅ MUST be true so Laravel auto fills createdAt / updatedAt
-    public $timestamps = true;
+public function images()
+{
+return $this->hasMany(ProductImage::class);
+}
 
-    protected $fillable = [
-        'name',
-        'category',
-        'subcategory',
-        'price',
-        'shipping_charge',
-        'original_price',
-        'stock',
-        'colors',
-        'sizes',
-        'size_prices',
-        'description',
-        'image',
-        'gallery_images',
-        'badge',
-        'status',
-        'trend_type',
-        'rating',
-    ];
+public function category()
+{
+return $this->belongsTo(Category::class);
+}
 
-    protected $casts = [
-        'colors' => 'array',
-        'sizes' => 'array',
-        'size_prices' => 'array',
-        'gallery_images' => 'array',
-        'price' => 'decimal:2',
-        'shipping_charge' => 'decimal:2',
-        'original_price' => 'decimal:2',
-        'rating' => 'decimal:2',
-        'stock' => 'integer',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
+public function colors()
+{
+    return $this->belongsToMany(Color::class, 'product_variants');
+}
+public function imagesByColor($color_id)
+{
+    return $this->images()->where('color_id', $color_id);
+}
+
 }

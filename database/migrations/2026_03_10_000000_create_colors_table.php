@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->decimal('original_price', 10, 2)->nullable();
-        });
+       Schema::create('colors', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');   // Red
+    $table->string('code');   // #FF0000
+    $table->timestamps();
+});
     }
 
     /**
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn('original_price');
-        });
+        Schema::dropIfExists('colors');
     }
 };

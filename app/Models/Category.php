@@ -7,17 +7,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Category extends Model
 {
-    use HasFactory;
 
-    protected $fillable = [
-        'name',
-        'slug',
-        'description',
-        'status',
-    ];
+protected $fillable = [
+'name',
+'slug',
+'parent_id',
+'status' 
+];
 
-    protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
+public function children()
+{
+return $this->hasMany(Category::class,'parent_id');
+}
+
+public function parent()
+{
+return $this->belongsTo(Category::class,'parent_id');
+}
+
 }

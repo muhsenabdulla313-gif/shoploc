@@ -4,28 +4,34 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-
+use App\Models\Category;
+use Illuminate\Support\Str;
 class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = \App\Models\Category::all();
-        return response()->json(['success' => true, 'data' => $categories]);
+        $categories = Category::with('children')->whereNull('parent_id')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $categories
+        ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|unique:categories,name',
-            'description' => 'nullable|string',
-            'status' => 'nullable|string|in:active,inactive',
+            'status' => 'nullable|in:active,inactive',
+            'parent_id' => 'nullable|exists:categories,id',
+
         ]);
 
-        $category = \App\Models\Category::create([
+        $category = Category::create([
             'name' => $request->name,
-            'slug' => \Illuminate\Support\Str::slug($request->name),
-            'description' => $request->description ?? '',
-            'status' => $request->status ?? 'active',
+            'slug' => Str::slug($request->name),
+            'parent_id' => $request->parent_id,
+            'status' => $request->status ?? 'active'
         ]);
 
         return response()->json(['success' => true, 'data' => $category], 201);
@@ -33,7 +39,7 @@ class CategoryController extends Controller
 
     public function show($id)
     {
-        $category = \App\Models\Category::find($id);
+        $category = Category::find($id);
         if (!$category) {
             return response()->json(['success' => false, 'message' => 'Category not found'], 404);
         }
@@ -42,30 +48,28 @@ class CategoryController extends Controller
 
     public function update(Request $request, $id)
     {
-        $category = \App\Models\Category::find($id);
+        $category = Category::find($id);
+
         if (!$category) {
             return response()->json(['success' => false, 'message' => 'Category not found'], 404);
         }
 
         $request->validate([
             'name' => 'sometimes|required|string|unique:categories,name,' . $id,
-            'description' => 'nullable|string',
-            'status' => 'nullable|string|in:active,inactive',
+            'parent_id' => 'nullable|exists:categories,id',
         ]);
 
         $category->update([
             'name' => $request->name ?? $category->name,
             'slug' => $request->name ? \Illuminate\Support\Str::slug($request->name) : $category->slug,
-            'description' => $request->has('description') ? $request->description : $category->description,
-            'status' => $request->has('status') ? $request->status : $category->status,
+            'parent_id' => $request->parent_id ?? $category->parent_id,
         ]);
 
         return response()->json(['success' => true, 'data' => $category]);
     }
-
     public function destroy($id)
     {
-        $category = \App\Models\Category::find($id);
+        $category = Category::find($id);
         if (!$category) {
             return response()->json(['success' => false, 'message' => 'Category not found'], 404);
         }

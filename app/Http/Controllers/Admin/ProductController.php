@@ -2,68 +2,58 @@
 
 namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
-
+use Illuminate\Support\Str;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
+use App\Models\Color;
 class ProductController extends Controller
 {
 
 
 
-public function display(){
+    public function display()
+    {
 
-$products = Product::latest()->paginate(10);
+        $products = Product::with(['category', 'variants', 'images'])->latest()->paginate(10);
         return view('admin.products', compact('products'));
 
-}
+    }
     public function index(Request $request)
     {
-        try {
-            $query = Product::query();
+        $query = Product::with('category');
 
-            // Apply category filter if provided
-            if ($request->filled('category')) {
-                $query->where('category', $request->category);
-            }
-
-            // Apply status filter if provided
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
-
-            $products = $query->orderBy('id', 'desc')->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $products
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch products',
-                'error' => $e->getMessage()
-            ], 500);
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
         }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->latest()->get()
+        ]);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+            'category_id' => 'required|exists:categories,id',
 
-            // ✅ category must exist in categories table
-            'category' => 'required|string|exists:categories,name',
-
+            'variants' => 'required|array',
+            'variants.size.*' => 'nullable|string',
+            'variants.color_id.*' => 'nullable|exists:colors,id',
+            'variants.stock.*' => 'required|integer|min:0',
             'subcategory' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0.01',
             'shipping_charge' => 'nullable|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
-            'stock' => 'required|integer|min:0',
 
             'colors' => 'nullable|array',
             'colors.*' => 'string|max:50',
@@ -79,7 +69,6 @@ $products = Product::latest()->paginate(10);
             'trend_type' => 'nullable|string|in:hot-trend,best-seller,featured',
             'rating' => 'nullable|numeric|min:0|max:5',
 
-            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
@@ -94,51 +83,49 @@ $products = Product::latest()->paginate(10);
 
         DB::beginTransaction();
 
-        $mainImagePath = null;
-        $additionalImagePaths = [];
-
         try {
-            // Handle main image
-            if ($request->hasFile('main_image')) {
-                $mainImagePath = $request->file('main_image')->store('products/main', 'public');
-            }
-
-            // Handle additional images
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $img) {
-                    $additionalImagePaths[] = $img->store('products/additional', 'public');
-                }
-            }
-
-            // Combine main image + additional
-            $allImagePaths = [];
-            if ($mainImagePath) $allImagePaths[] = $mainImagePath;
-            $allImagePaths = array_merge($allImagePaths, $additionalImagePaths);
-
-            // Set first image as main, rest as gallery
-            $imagePath = $mainImagePath ?? ($allImagePaths[0] ?? null);
-            $galleryPaths = count($allImagePaths) > 1 ? array_slice($allImagePaths, 1) : [];
-
             $product = Product::create([
                 'name' => $request->name,
-                'category' => $request->category,
-                'subcategory' => $request->subcategory ?? null,
+                'category_id' => $request->category_id,
+                'slug' => Str::slug($request->name),
+
                 'price' => $request->price,
-                'shipping_charge' => $request->shipping_charge ?? 0.00,
+                'shipping_charge' => $request->shipping_charge ?? 0,
                 'original_price' => $request->original_price ?? 0,
-                'stock' => $request->stock ?? 0,
-
-                'sizes' => $request->input('sizes', []),
-                'colors' => $request->input('colors', []),
-                'size_prices' => $this->processSizePrices($request->input('size_prices', [])),
-                'description' => $request->description ?? '',
-                'status' => $request->status ?? 'active',
-                'trend_type' => $request->trend_type,
-                'rating' => $request->rating ?? 0.0,
-
-                'image' => $imagePath,
-                'gallery_images' => $galleryPaths,
+                'description' => $request->description,
+                'status' => $request->status,
             ]);
+
+            // variants
+            foreach ($request->variants['stock'] as $i => $stock) {
+                $product->variants()->create([
+                    'size' => $request->variants['size'][$i] ?? null,
+                    'color_id' => $request->variants['color_id'][$i] ?? null,
+                    'stock' => $stock,
+                ]);
+            }
+
+
+
+            if ($request->has('color_images')) {
+                foreach ($request->color_images as $colorBlock) {
+
+                    $colorId = $colorBlock['color_id'] ?? null;
+
+                    if (!$colorId || !isset($colorBlock['images']))
+                        continue;
+
+                    foreach ($colorBlock['images'] as $img) {
+
+                        $path = $img->store('products', 'public');
+
+                        $product->images()->create([
+                            'image' => $path,
+                            'color_id' => $colorId
+                        ]);
+                    }
+                }
+            }
 
             DB::commit();
 
@@ -146,41 +133,71 @@ $products = Product::latest()->paginate(10);
                 'success' => true,
                 'message' => 'Product created successfully',
                 'data' => $product
-            ], 201);
-
+            ]);
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            if (!empty($mainImagePath)) Storage::disk('public')->delete($mainImagePath);
-            foreach ($additionalImagePaths as $p) Storage::disk('public')->delete($p);
-
-            Log::error('Product creation failed', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            Log::error('Product create failed', [
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create product: ' . $e->getMessage(),
-                'error_details' => [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]
+                'message' => 'Product creation failed',
+                'error' => $e->getMessage()
             ], 500);
         }
+
     }
 
     public function show($id)
     {
         try {
-            $product = Product::findOrFail($id);
+            $product = Product::with([
+                'category.parent',
+                'variants.color',
+                'images.color'
+            ])->findOrFail($id);
+
+            $colorImages = $product->images
+                ->groupBy('color_id')
+                ->map(function ($images) {
+                    return [
+                        'color_name' => optional($images->first()->color)->name ?? '',
+                        'images' => $images->pluck('image')->toArray()
+                    ];
+                })
+                ->values();
+
+            $variants = $product->variants->map(function ($v) {
+                return [
+                    'size' => $v->size,
+                    'color_name' => optional($v->color)->name ?? '',
+                    'stock' => $v->stock
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'data' => $product
+                'data' => [
+                    'name' => $product->name,
+                    'category' => $product->category->parent
+                        ? $product->category->parent->name
+                        : ($product->category->name ?? null),
+
+                    'subcategory' => $product->category->parent
+                        ? $product->category->name
+                        : null,
+                    'price' => $product->price,
+                    'original_price' => $product->original_price,
+                    'status' => $product->status,
+                    'description' => $product->description,
+
+                    'color_images' => $colorImages,
+                    'variants' => $variants
+                ]
             ]);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -190,111 +207,136 @@ $products = Product::latest()->paginate(10);
         }
     }
 
-    public function update(Request $request, $id)
-    {
-        $product = Product::find($id);
+  public function update(Request $request, $id)
+{
+    $product = Product::find($id);
 
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Product not found'
-            ], 404);
+    if (!$product) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Product not found'
+        ], 404);
+    }
+
+    // ✅ VALIDATION
+    $validator = Validator::make($request->all(), [
+        'name' => 'sometimes|string|max:255',
+        'category_id' => 'nullable|exists:categories,id',
+        'price' => 'sometimes|numeric|min:0.01',
+        'shipping_charge' => 'nullable|numeric|min:0',
+        'original_price' => 'nullable|numeric|min:0',
+
+        // ✅ VARIANTS
+        'variants' => 'nullable|array',
+        'variants.size.*' => 'nullable|string',
+        'variants.color_id.*' => 'required_with:variants|exists:colors,id',
+        'variants.stock.*' => 'required_with:variants|integer|min:0',
+
+        'description' => 'nullable|string',
+        'status' => 'nullable|string|in:active,inactive',
+
+        // ✅ COLOR IMAGES
+        'color_images' => 'nullable|array',
+        'color_images.*.color_id' => 'required_with:color_images|exists:colors,id',
+        'color_images.*.images' => 'nullable|array',
+        'color_images.*.images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        // ✅ UPDATE BASIC PRODUCT
+        $product->update($request->only([
+            'name',
+            'category_id',
+            'price',
+            'shipping_charge',
+            'original_price',
+            'description',
+            'status'
+        ]));
+
+        // ✅ HANDLE VARIANTS
+        if ($request->has('variants')) {
+
+            // delete old
+            $product->variants()->delete();
+
+            $sizes  = $request->variants['size'] ?? [];
+            $colors = $request->variants['color_id'] ?? [];
+            $stocks = $request->variants['stock'] ?? [];
+
+            foreach ($stocks as $i => $stock) {
+                $product->variants()->create([
+                    'size' => $sizes[$i] ?? null,
+                    'color_id' => $colors[$i] ?? null,
+                    'stock' => $stock,
+                ]);
+            }
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'category' => 'nullable|string|exists:categories,name',
-            'subcategory' => 'nullable|string|max:255',
-            'price' => 'sometimes|numeric|min:0.01',
-            'shipping_charge' => 'nullable|numeric|min:0',
-            'original_price' => 'nullable|numeric|min:0',
-            'stock' => 'nullable|integer|min:0',
+        // ✅ HANDLE COLOR IMAGES
+        if ($request->has('color_images') && count($request->color_images)) {
 
-            'colors' => 'nullable|array',
-            'colors.*' => 'string|max:50',
-            'sizes' => 'nullable|array',
-            'sizes.*' => 'string|max:50',
-            'size_prices' => 'nullable|array',
-            'size_prices.*' => 'array|nullable',
-            'size_prices.*.price' => 'nullable|numeric|min:0',
-            'size_prices.*.original_price' => 'nullable|numeric|min:0',
+            // delete old images from storage
+            foreach ($product->images as $img) {
+                Storage::disk('public')->delete($img->image);
+            }
 
-            'description' => 'nullable|string',
-            'status' => 'nullable|string|in:active,inactive',
-            'trend_type' => 'nullable|string|in:hot-trend,best-seller,featured',
-            'rating' => 'nullable|numeric|min:0|max:5',
+            // delete DB records
+            $product->images()->delete();
 
-            'main_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-            'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            // insert new
+            foreach ($request->color_images as $colorBlock) {
+
+                $colorId = $colorBlock['color_id'] ?? null;
+
+                if (!$colorId || !isset($colorBlock['images'])) continue;
+
+                foreach ($colorBlock['images'] as $img) {
+
+                    $path = $img->store('products', 'public');
+
+                    $product->images()->create([
+                        'image' => $path,
+                        'color_id' => $colorId
+                    ]);
+                }
+            }
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Product updated successfully'
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+    } catch (\Throwable $e) {
 
-        DB::beginTransaction();
+        DB::rollBack();
 
-        try {
-            // Main image replace
-            if ($request->hasFile('main_image')) {
-                if (!empty($product->image)) {
-                    Storage::disk('public')->delete($product->image);
-                }
-                $product->image = $request->file('main_image')->store('products/main', 'public');
-            }
+        Log::error('Product update failed', [
+            'product_id' => $id,
+            'error' => $e->getMessage()
+        ]);
 
-            // Additional images replace (full replace)
-            if ($request->hasFile('images')) {
-                $existing = $product->gallery_images ?? [];
-                if (is_array($existing)) {
-                    foreach ($existing as $old) {
-                        if (!empty($old)) Storage::disk('public')->delete($old);
-                    }
-                }
-
-                $newGallery = [];
-                foreach ($request->file('images') as $img) {
-                    $newGallery[] = $img->store('products/additional', 'public');
-                }
-                $product->gallery_images = $newGallery;
-            }
-
-            foreach ([
-                'name','category','subcategory','price','shipping_charge','original_price','stock',
-                'description','status','trend_type','rating'
-            ] as $field) {
-                if ($request->has($field)) {
-                    $product->{$field} = $request->input($field);
-                }
-            }
-
-            if ($request->has('colors')) $product->colors = $request->input('colors', []);
-            if ($request->has('sizes')) $product->sizes = $request->input('sizes', []);
-            if ($request->has('size_prices')) $product->size_prices = $this->processSizePrices($request->input('size_prices', []));
-
-            $product->save();
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Product updated successfully',
-                'data' => $product
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update product',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Product update failed',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     public function destroy($id)
     {
@@ -310,24 +352,21 @@ $products = Product::latest()->paginate(10);
         DB::beginTransaction();
 
         try {
-            if (!empty($product->image)) {
-                Storage::disk('public')->delete($product->image);
+            foreach ($product->images as $img) {
+                Storage::disk('public')->delete($img->image);
             }
 
-            $galleryImages = $product->gallery_images ?? [];
-            if (is_array($galleryImages)) {
-                foreach ($galleryImages as $img) {
-                    if (!empty($img)) Storage::disk('public')->delete($img);
-                }
-            }
+            $product->images()->delete();
 
             $product->delete();
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product deleted successfully'
             ]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -363,7 +402,7 @@ $products = Product::latest()->paginate(10);
 
         try {
             $product = Product::findOrFail($id);
-            
+
             $updateData = [];
             if ($request->has('trend_type')) {
                 $updateData['trend_type'] = $request->trend_type;
@@ -371,7 +410,7 @@ $products = Product::latest()->paginate(10);
             if ($request->has('rating')) {
                 $updateData['rating'] = $request->rating;
             }
-            
+
             $product->update($updateData);
 
             return response()->json([
@@ -407,7 +446,7 @@ $products = Product::latest()->paginate(10);
 
         try {
             $product = Product::findOrFail($request->product_id);
-            
+
             $product->update([
                 'trend_type' => $request->trend_type,
                 'rating' => $request->rating ?? $product->rating,
@@ -432,8 +471,7 @@ $products = Product::latest()->paginate(10);
     {
         try {
             $product = Product::findOrFail($id);
-            
-            // Remove trendy attributes
+
             $product->update([
                 'trend_type' => null,
                 'rating' => 0
@@ -464,7 +502,6 @@ $products = Product::latest()->paginate(10);
 
         $q = strtolower(trim($query));
 
-        // Popular categories suggestions (✅ no men/kids here)
         $popularCategories = [
             'saree' => 'Saree Collection',
             'kurta' => 'Kurta Collection',
@@ -490,27 +527,28 @@ $products = Product::latest()->paginate(10);
             }
         }
 
-        // ✅ FIXED: distinct categories from DB (no groupBy issue)
-        $dbCategoryMatches = Product::whereRaw('LOWER(category) LIKE ?', ["%{$q}%"])
-            ->selectRaw('DISTINCT category')
+        $dbCategoryMatches = Product::whereHas('category', function ($q2) use ($q) {
+            $q2->whereRaw('LOWER(name) LIKE ?', ["%{$q}%"]);
+        })
+            ->with('category')
             ->limit(3)
             ->get()
-            ->map(function ($row) {
-                $cat = (string)$row->category;
+            ->map(function ($product) {
                 return [
-                    'id' => 'category_' . strtolower(str_replace(' ', '_', $cat)),
-                    'name' => $cat . ' Collection',
+                    'id' => 'category_' . $product->category->id,
+                    'name' => $product->category->name . ' Collection',
                     'productType' => 'category',
-                    'category' => $cat,
+                    'category' => $product->category->name ?? null,
                     'isCategoryMatch' => true,
-                    'isPopularCategory' => false
                 ];
             });
+        ;
 
         // Product name matches
         $nameProducts = Product::whereRaw('LOWER(name) LIKE ?', ["%{$q}%"])
             ->orWhereRaw('LOWER(subcategory) LIKE ?', ["%{$q}%"])
-            ->select('id', 'name', 'category')
+            ->select('id', 'name', 'category_id')
+            ->with('category')
             ->limit(7)
             ->get()
             ->map(function ($product) {
@@ -518,7 +556,7 @@ $products = Product::latest()->paginate(10);
                     'id' => $product->id,
                     'name' => $product->name,
                     'productType' => 'products',
-                    'category' => $product->category,
+                    'category' => $product->category->name ?? null,
                     'isCategoryMatch' => false,
                     'isPopularCategory' => false
                 ];
@@ -534,13 +572,13 @@ $products = Product::latest()->paginate(10);
     public function listTrendyProducts()
     {
         try {
-            $trendyProducts = Product::where(function($query) {
+            $trendyProducts = Product::where(function ($query) {
                 $query->whereNotNull('trend_type')
-                      ->where('trend_type', '!=', '');
+                    ->where('trend_type', '!=', '');
             })
-            ->orWhere('rating', '>', 4.0)
-            ->orderBy('id', 'desc')
-            ->get();
+                ->orWhere('rating', '>', 4.0)
+                ->orderBy('id', 'desc')
+                ->get();
 
             return response()->json([
                 'success' => true,
@@ -559,16 +597,17 @@ $products = Product::latest()->paginate(10);
     public function getRelatedProducts($category, $excludeId)
     {
         try {
-            $relatedProducts = Product::where('category', $category)
+            $relatedProducts = Product::with('images')
+                ->where('category_id', $category)
                 ->where('id', '!=', $excludeId)
                 ->where('status', 'active')
-                ->orderBy('id', 'desc')
+                ->latest()
                 ->limit(10)
                 ->get();
 
-            $relatedProducts->transform(function($p){
-                $p->image = $p->image
-                    ? Storage::url($p->image)
+            $relatedProducts->transform(function ($p) {
+                $p->image = $p->images->first()
+                    ? Storage::url($p->images->first()->image)
                     : 'https://placehold.co/600x800?text=No+Image';
                 return $p;
             });
@@ -606,4 +645,34 @@ $products = Product::latest()->paginate(10);
 
         return $processed;
     }
+
+    public function colorindex()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => Color::all()
+        ]);
+    }
+
+    public function colorstore(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'code' => 'required|string|max:20'
+        ]);
+
+        $color = Color::create([
+            'name' => $request->name,
+            'code' => $request->code
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $color
+        ]);
+    }
+
+
+
+
 }
