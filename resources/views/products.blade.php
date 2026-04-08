@@ -17,7 +17,20 @@
           elseif (str_contains($catRaw, 'men')) $cat = 'men';
           elseif (str_contains($catRaw, 'kids') || str_contains($catRaw, 'kid')) $cat = 'kids';
 
-          $img = $product->image ? asset('storage/' . $product->image) : 'https://placehold.co/800x1000?text=No+Image';
+
+  $img = 'https://placehold.co/800x1000?text=No+Image';
+
+  if ($product->colors->count()) {
+      $firstColor = $product->colors->first();
+
+      $firstImage = $product->images
+          ->where('color_id', $firstColor->id)
+          ->first();
+
+      if ($firstImage && $firstImage->image) {
+          $img = asset('storage/' . $firstImage->image);
+      }
+  }
 
           $price = (float)($product->price ?? 0);
           $oprice = (float)($product->original_price ?? 0);
@@ -26,7 +39,6 @@
           $qty = (int)($product->stock ?? $product->qty ?? 1);
           $isSoldOut = ($qty <= 0) || (strtolower(trim($product->badge ?? '')) === 'sold out');
 
-          // ✅ DB shipping charge
           $ship = (float)($product->shipping_charge ?? 0);
         @endphp
 
@@ -34,7 +46,7 @@
           data-category="{{ $cat }}"
           data-href="/product/{{ $product->id }}"
           data-id="{{ $product->id }}"
-          data-shipping="{{ $ship }}"  {{-- ✅ ADD --}}
+          data-shipping="{{ $ship }}" 
         >
           <div class="nm-imgWrap">
             <img src="{{ $img }}" alt="{{ $product->name }}" class="nm-img" loading="lazy"

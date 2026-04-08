@@ -377,7 +377,7 @@
             </form>
         </div>
     </div>
-    <div id="colorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div id="colorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[10000]">
         <div class="bg-white p-6 rounded-md w-full max-w-md">
             <h3 class="text-lg font-bold mb-3">Add Color</h3>
 
@@ -822,20 +822,22 @@
         }
 
 
-        function loadColors(selectElement) {
-            fetch('/admin/colors')
-                .then(res => res.json())
-                .then(data => {
-                    selectElement.innerHTML = '<option value="">Select Color</option>';
+       function loadColors(selectElement, callback = null) {
+    fetch('/admin/colors')
+        .then(res => res.json())
+        .then(data => {
+            selectElement.innerHTML = '<option value="">Select Color</option>';
 
-                    data.data.forEach(color => {
-                        const opt = document.createElement('option');
-                        opt.value = color.id;
-                        opt.textContent = color.name;
-                        selectElement.appendChild(opt);
-                    });
-                });
-        }
+            data.data.forEach(color => {
+                const opt = document.createElement('option');
+                opt.value = color.id;
+                opt.textContent = color.name;
+                selectElement.appendChild(opt);
+            });
+
+            if (callback) callback();
+        });
+}
         // SIZE PRICE GENERATION
         function generateSizePriceFields() {
             const sizesInput = document.getElementById('productSizes');
@@ -940,8 +942,15 @@
                             closeColorModal();
 
                             document.querySelectorAll('.color-select').forEach(select => {
-                                loadColors(select);
-                            });
+    const currentValue = select.value; // save selected
+
+    loadColors(select);
+
+    setTimeout(() => {
+        select.value = currentValue; // restore selected
+        updateSelectedColors(); // VERY IMPORTANT
+    }, 200);
+});
                         });
                 }
             });

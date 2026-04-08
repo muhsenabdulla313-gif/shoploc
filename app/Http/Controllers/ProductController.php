@@ -13,7 +13,7 @@ class ProductController extends Controller
 {
 
 
- public function products()
+    public function products()
     {
         $products = Product::orderBy('id', 'desc')->get();
         return view('products', compact('products'));
@@ -53,18 +53,16 @@ class ProductController extends Controller
 
     public function show($id)
     {
-        $product = Product::findOrFail($id);
+        $product = Product::with([
+            'colors.images',
+            'variants'
+        ])->findOrFail($id);
 
-        $sizePrices = [];
-        if ($product->size_prices && is_array($product->size_prices)) {
-            $sizePrices = $product->size_prices;
-        } elseif (is_string($product->size_prices)) {
-            $sizePrices = json_decode($product->size_prices, true) ?: [];
-        }
+
 
         $isLoggedIn = auth()->check();
 
-        return view('product-details', compact('product', 'sizePrices', 'isLoggedIn'));
+        return view('product-details', compact('product', 'isLoggedIn'));
     }
 
     public function women()
@@ -90,4 +88,47 @@ class ProductController extends Controller
     }
 
 
+public function getRelatedProducts($categoryId, $excludeId)
+{
+    try {
+        $category = \App\Models\Category::find($categoryId);
+
+        $categoryIds = [$categoryId];
+
+        // If category has parent → get sibling categories
+        if ($category && $category->parent_id) {
+            $siblings = \App\Models\Category::where('parent_id', $category->parent_id)
+                ->pluck('id')
+                ->toArray();
+
+            $categoryIds = $siblings;
+        }
+
+        $relatedProducts = Product::where('id', '!=', $excludeId)
+            ->where('status', 'active')
+            ->whereIn('category_id', $categoryIds)
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        $relatedProducts->transform(function ($p) {
+            $p->image = $p->image
+                ? asset('storage/' . $p->image)
+                : 'https://placehold.co/600x800?text=No+Image';
+            return $p;
+        });
+
+        return response()->json([
+            'success' => true,
+            'products' => $relatedProducts
+        ]);
+
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch related products',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

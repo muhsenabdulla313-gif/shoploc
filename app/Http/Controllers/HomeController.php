@@ -16,8 +16,7 @@ class HomeController extends Controller
             session(['referral_code' => $referralCode]);
         }
 
-        $products = Product::orderBy('id', 'desc')->get();
-
+$products = Product::with(['images', 'colors'])->orderBy('id', 'desc')->get();
         $trendyProducts = Product::where('status', 'active')
             ->whereNotNull('trend_type')
             ->orderByRaw("CASE

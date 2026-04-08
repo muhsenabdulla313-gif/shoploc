@@ -33,15 +33,15 @@ Route::get('/admin/products/search-suggestions', [ProductController::class, 'sea
 Route::get('/womens', [ProductController::class, 'women'])->name('women.page');
 Route::get('/mens', [ProductController::class, 'mens'])->name('men.page');
 Route::get('/kids', [ProductController::class, 'kids'])->name('kids.page');
-Route::get('/cart', function () {return view('cart');})->name('cart')->middleware('auth');
+
+
+Route::get('/cart', function () {return view('cart');})->name('cart');
 Route::get('/wishlist', function () { return view('wishlist');})->name('wishlist')->middleware('auth');
-Route::get('/api/products/related/{category}/{excludeId}', [ProductController::class, 'getRelatedProducts'])->name('products.related');
+Route::get('/api/products/related/{categoryId}/{excludeId}', [ProductController::class, 'getRelatedProducts']);
 Route::get('/checkout', function () {return view('checkout');})->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
 Route::get('/payment', function () {return view('payment');})->name('payment');
 Route::get('/contact', function () {return view('contact');})->name('contact');
 Route::post('/contact/submit', [HomeController::class, 'contact'])->name('contact.submit');
-
-
 
 
 
@@ -76,7 +76,10 @@ Route::middleware(['auth:staff'])->group(function () {
 });
 
 
-
+Route::post('/save-referral', function (\Illuminate\Http\Request $request) {
+    session(['staff_id' => $request->staff_id]);
+    return response()->json(['success' => true]);
+});
 Route::get('/password/reset', [AdminLoginController::class, 'reset'])->name('password.request');
 Route::post('/password/email', [AdminLoginController::class, 'updatepassword'])->name('password.email');
 Route::get('/password/reset/{token}', [AdminLoginController::class, 'resettoken'])->name('password.request');
@@ -147,13 +150,14 @@ Route::post('/admin/password/email', [AdminLoginController::class, 'reset_new'])
 
 Route::get('/referral-required', [ReferralController::class, 'show'])->name('referral.required');
 Route::post('/referral-required', [ReferralController::class, 'submit'])->name('referral.submit');
+Route::get('/cart', function () {return view('cart');})->name('cart');
 
 Route::post('/checkout', [CartController::class, 'checkout'])->name('checkout');
-
-// Route::middleware(['web', 'auth:staff'])->group(function () {
-  
-// });
-
+Route::post('/cart/add', [CartController::class, 'addToCart'])->name('cart.add');
+Route::get('/check-coupon/{code}', [CartController::class, 'checkCoupon']);
+Route::post('/cart/sync', [CartController::class, 'syncCart'])->name('cart.sync');
+Route::post('/apply-coupon', [CartController::class, 'applyCoupon']);
+Route::post('/apply-referral', [CartController::class, 'applyReferral']);
 
 
 

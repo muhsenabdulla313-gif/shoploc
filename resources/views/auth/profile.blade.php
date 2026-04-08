@@ -30,9 +30,14 @@
               <i class="fa-solid fa-box"></i> My Orders
             </a>
 
-            <button type="button" class="pf-btn pf-btn-danger" onclick="confirmDeleteAccount()">
-              <i class="fa-solid fa-trash"></i> Delete Account
-            </button>
+       <form id="profile-logout-form" action="{{ route('logout') }}" method="POST">
+  @csrf
+  <button type="button" class="pf-btn pf-btn-danger" onclick="confirmLogout()">
+    <i class="fa-solid fa-right-from-bracket"></i> Logout
+  </button>
+</form>
+
+
           </div>
 
         </div>
@@ -62,23 +67,13 @@
 .pf-btn-ghost{ background:#f3f4f6; color:#111; border:1px solid rgba(0,0,0,.10); }
 .pf-btn-danger{ background:#fff; color:#dc2626; border:1px solid rgba(220,38,38,.25); }
 </style>
-
 <script>
-function confirmDeleteAccount(){
-  if(confirm('Are you sure you want to delete your account?')){
-    const form=document.createElement('form');
-    form.method='POST';
-    form.action='/profile/delete';
-
-    const token=document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    form.innerHTML = `
-      <input type="hidden" name="_token" value="${token}">
-      <input type="hidden" name="_method" value="DELETE">
-    `;
-    document.body.appendChild(form);
-    form.submit();
+function confirmLogout() {
+  if (confirm("Are you sure you want to logout?")) {
+    document.getElementById('profile-logout-form').submit();
   }
 }
 </script>
+
 @include('footer')
 @endpush

@@ -33,7 +33,6 @@
          class="hero-img img3" width="300" height="400" loading="lazy">
   </div>
 
-  <!-- ✅ BOTTOM CURVE -->
   <div class="hero-curve hero-curve-bottom invert" aria-hidden="true">
     <svg class="curve-svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
       <path

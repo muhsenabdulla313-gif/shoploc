@@ -54,13 +54,7 @@
                   <span>My Orders</span>
                 </a>
               </li>
-              <li>
-                <a class="dropdown-item" href="{{ route('user.delete') }}"
-                   onclick="return confirm('Are you sure you want to delete your account? This action cannot be undone.')">
-                  <i class="fa-solid fa-trash"></i>
-                  <span>Delete Account</span>
-                </a>
-              </li>
+             
 
               <li><hr class="dropdown-divider asion-divider"></li>
 
@@ -146,13 +140,7 @@
                     <span>My Orders</span>
                   </a>
                 </li>
-                <li>
-                  <a class="dropdown-item" href="{{ route('user.delete') }}"
-                     onclick="return confirm('Are you sure you want to delete your account? This action cannot be undone.')">
-                    <i class="fa-solid fa-trash"></i>
-                    <span>Delete Account</span>
-                  </a>
-                </li>
+             
 
                 <li><hr class="dropdown-divider asion-divider"></li>
 
