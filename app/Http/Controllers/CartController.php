@@ -199,9 +199,9 @@ class CartController extends Controller
                     'zip' => $savedAddress->zip,
                     'state' => $address['state'] ?? '',
 
-                    'payment_method' => $input['payment_method'] ?? 'cod',
-                    'payment_status' => ($input['payment_method'] == 'online') ? 'paid' : 'pending',
-                ]);
+$paymentMethod = $input['payment_method'] ?? 'cod',
+'payment_method' => $paymentMethod,
+'payment_status' => ($paymentMethod === 'online') ? 'paid' : 'pending',                ]);
 
                 // ✅ Process each cart item
                 foreach ($cartItems as $item) {

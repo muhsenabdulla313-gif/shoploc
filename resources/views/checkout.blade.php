@@ -21,12 +21,16 @@
               </button>
             </div>
           </div>
-          @foreach($addresses as $addr)
-            <div>
-              <input type="radio" name="address_id" value="{{ $addr->id }}">
-              {{ $addr->address }}, {{ $addr->city }}
-            </div>
-          @endforeach
+       @if($addresses->count())
+    @foreach($addresses as $addr)
+        <div>
+            <input type="radio" name="address_id" value="{{ $addr->id }}">
+            {{ $addr->address }}, {{ $addr->city }}
+        </div>
+    @endforeach
+@else
+    <p>No saved addresses. Please add a new one.</p>
+@endif
           <!-- ✅ ADDRESS FORM -->
           <div id="addressFormContainer">
             <form id="checkoutForm">
@@ -91,7 +95,21 @@
           </div>
 
         </div>
+<div class="section">
+  <h3 class="section-title">Payment Method</h3>
 
+  <label>
+    <input type="radio" name="payment_method" value="cod" checked>
+    Cash on Delivery
+  </label>
+
+  <br>
+
+  <label>
+    <input type="radio" name="payment_method" value="online">
+    Online Payment
+  </label>
+</div>
         <!-- RIGHT: ORDER SUMMARY -->
         <div class="checkout-right">
           <div class="summary-card">
@@ -143,18 +161,7 @@
       }
     });
 
-    function loadSavedAddress() {
-      const saved = localStorage.getItem('checkoutAddress');
-      if (!saved) return;
-      const data = JSON.parse(saved);
-      const form = document.getElementById('checkoutForm');
-      if (!form) return;
-
-      Object.keys(data).forEach(key => {
-        const input = form.querySelector(`[name="${key}"]`);
-        if (input) input.value = data[key];
-      });
-    }
+ 
 
     // ✅ money helper
     function money(n) { return '$' + Number(n).toFixed(2); }
@@ -309,6 +316,7 @@
       const addressId = formData.get('address_id');
 
       const address = Object.fromEntries(formData.entries()); 
+const paymentMethod = formData.get('payment_method'); // ✅ ADD
 
       const staffId = localStorage.getItem('staff_id');
       fetch('/checkout', {
@@ -322,6 +330,8 @@
           address: address,
           address_id: addressId,
           staff_id: staffId,
+              payment_method: paymentMethod,
+
           discount: 0
         })
       })

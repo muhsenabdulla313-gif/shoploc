@@ -18,7 +18,7 @@ use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\ListController as AdminListController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\BillingStaffController as AdminBillingStaffController;
-
+use App\Http\Controllers\CheckoutController;
 
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -38,13 +38,13 @@ Route::get('/kids', [ProductController::class, 'kids'])->name('kids.page');
 Route::get('/cart', function () {return view('cart');})->name('cart');
 Route::get('/wishlist', function () { return view('wishlist');})->name('wishlist')->middleware('auth');
 Route::get('/api/products/related/{categoryId}/{excludeId}', [ProductController::class, 'getRelatedProducts']);
-Route::get('/checkout', function () {return view('checkout');})->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
+// Route::get('/checkout', function () {return view('checkout');})->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
 Route::get('/payment', function () {return view('payment');})->name('payment');
 Route::get('/contact', function () {return view('contact');})->name('contact');
 Route::post('/contact/submit', [HomeController::class, 'contact'])->name('contact.submit');
 
-
-
+Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.page')->middleware([App\Http\Middleware\RequireReferral::class]);
+Route::post('/checkout/store', [CheckoutController::class, 'store']);
 Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('login');
 Route::post('/user-login', [UserLoginController::class, 'login'])->name('user.login.submit');
 Route::get('/register', function () {return view('auth.register');})->name('register');
