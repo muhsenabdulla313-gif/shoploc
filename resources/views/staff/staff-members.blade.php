@@ -6,36 +6,7 @@
 <div class="staffdb-wrap">
     <div class="staffdb-shell">
         <!-- Sidebar -->
-        <aside class="staffdb-sidebar">
-            <div>
-                <div class="side-icons">
-                    <a href="{{ route('staff.dashboard') }}"
-                       class="side-btn {{ request()->routeIs('staff.dashboard') || request()->routeIs('staff.dashboard.index') ? 'active' : '' }}"
-                       title="Dashboard">
-                        <i class="fas fa-th-large"></i>
-                    </a>
-
-                    <a href="{{ route('staff.staff.members') }}"
-                       class="side-btn {{ request()->routeIs('staff.staff.members') ? 'active' : '' }}"
-                       title="Staff Members">
-                        <i class="fas fa-users"></i>
-                    </a>
-                </div>
-            </div>
-
-            <div class="side-icons">
-                <button class="side-btn" type="button" title="Help">
-                    <i class="far fa-question-circle"></i>
-                </button>
-
-                <form id="logoutForm" action="{{ route('staff.logout') }}" method="POST" style="display:inline;">
-                    @csrf
-                    <button type="submit" class="side-btn" title="Logout">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                </form>
-            </div>
-        </aside>
+     
 
         <!-- Main -->
         <main class="staffdb-main">

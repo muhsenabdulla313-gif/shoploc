@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Product;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Order;
@@ -12,25 +13,21 @@ class StaffController extends Controller
 {
     public function dashboard()
     {
-        // Check if staff member is authenticated
         if (Auth::guard('staff')->check()) {
             $staff = Auth::guard('staff')->user();
 
-            // Ensure staff member has a referral code
             if (!$staff->referral_code) {
                 $referralCode = $this->generateStaffReferralCode();
                 \App\Models\Staff::where('id', $staff->id)->update(['referral_code' => $referralCode]);
                 $staff->referral_code = $referralCode; // Update the local object as well
             }
 
-            // Get referral statistics for current staff - only count completed orders
-            $completedReferredOrders = \App\Models\Order::where('staff_id', $staff->id)
+            $completedReferredOrders = Order::where('staff_id', $staff->id)
                 ->where('status', 'completed')
                 ->get();
 
             $purchaseReferrals = $completedReferredOrders->count();
 
-            // Calculate total earnings from completed referred purchases (10% commission)
             $totalEarnings = $completedReferredOrders->sum('total_amount') * 0.10;
 
             $referralStats = [
@@ -38,8 +35,7 @@ class StaffController extends Controller
                 'total_earnings' => $totalEarnings,
             ];
 
-            // Get recent activities for the current staff member - show completed referred orders
-            $recentCompletedOrders = \App\Models\Order::where('staff_id', $staff->id)
+            $recentCompletedOrders = Order::where('staff_id', $staff->id)
                 ->where('status', 'completed')
                 ->with('user')
                 ->orderBy('updated_at', 'desc')
@@ -67,10 +63,9 @@ class StaffController extends Controller
                 })
                 ->toArray();
 
-            // If no completed orders, show recent referral tracking records
             $recentActivities = $recentCompletedOrders;
             if (empty($recentActivities)) {
-                $recentActivities = \App\Models\ReferralTracking::where('staff_id', $staff->id)
+                $recentActivities = ReferralTracking::where('staff_id', $staff->id)
                     ->with('user')
                     ->orderBy('created_at', 'desc')
                     ->limit(5)
@@ -103,7 +98,6 @@ class StaffController extends Controller
                     ->toArray();
             }
 
-            // Get admin messages for the current staff member
             $adminMessages = \App\Models\StaffMessage::where('staff_id', $staff->id)
                 ->orderBy('created_at', 'desc')
                 ->get()
@@ -118,7 +112,10 @@ class StaffController extends Controller
 
     public function products()
     {
-        return view('staff.products');
+
+$products = Product::with(['category', 'variants', 'images'])->latest()->paginate(10);
+
+        return view('staff.products',compact('products'));
     }
 
     public function orders()
@@ -158,7 +155,7 @@ class StaffController extends Controller
             ->get();
 
         foreach ($staffMembers as $staff) {
-            $referredOrders = \App\Models\Order::where('referral_code', $staff->referral_code)->get();
+            $referredOrders = Order::where('referral_code', $staff->referral_code)->get();
             $staff->total_earnings = $referredOrders->sum('total_amount') * 0.1;
         }
 

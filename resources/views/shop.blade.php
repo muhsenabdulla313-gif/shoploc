@@ -90,9 +90,13 @@
 
                 $subcat = !empty($product->subcategory) ? strtolower(trim($product->subcategory)) : 'uncategorized';
 
-                $img = $product->image
-                  ? asset('storage/' . $product->image)
-                  : 'https://placehold.co/800x1000?text=No+Image';
+          $firstImage = $product->images->first();
+
+if ($firstImage && $firstImage->image) {
+    $img = asset('storage/' . $firstImage->image);
+} else {
+    $img = 'https://placehold.co/800x1000?text=No+Image';
+}
 
                 $price  = (float)($product->price ?? 0);
                 $oprice = (float)($product->original_price ?? 0);

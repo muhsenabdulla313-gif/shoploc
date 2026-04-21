@@ -17,20 +17,36 @@ class CheckoutController extends Controller
     }
    public function store(Request $request)
 {
-    $addressId = $request->address_id;
+   if ($request->address_id) {
+    // ✅ Use existing address
+   $address = Address::where('user_id', auth()->id())
+    ->findOrFail($request->address_id);
+} else {
+    // ✅ New address → check duplicate
+    $exists = Address::where('user_id', auth()->id())
+        ->where('address', $request->address['address'])
+        ->where('city', $request->address['city'])
+        ->where('zip', $request->address['zip'])
+        ->exists();
 
-    if (!$addressId) {
-        $address = Address::create([
-            'user_id' => auth()->id(),
-            'first_name' => $request->address['first_name'],
-            'last_name'  => $request->address['last_name'],
-            'phone'      => $request->address['phone'],
-            'address'    => $request->address['address'],
-            'city'       => $request->address['city'],
-            'zip'        => $request->address['zip'],
+    if ($exists) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Address already exists'
         ]);
+    }
 
-        $addressId = $address->id;
+    $address = Address::create([
+        'user_id' => auth()->id(),
+        'first_name' => $request->address['first_name'],
+        'last_name' => $request->address['last_name'],
+        'phone' => $request->address['phone'],
+        'address' => $request->address['address'],
+        'city' => $request->address['city'],
+        'zip' => $request->address['zip'],
+    ]);
+
+
     }
 
     // 👉 continue order creation using $addressId

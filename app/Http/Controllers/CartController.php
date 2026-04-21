@@ -181,29 +181,31 @@ class CartController extends Controller
                 }
 
                 // ✅ Create order
-                $order = \App\Models\Order::create([
-                    'user_id' => Auth::id(),
-                    'address_id' => $savedAddress->id, // ✅ ADD THIS LINE
+               $paymentMethod = $input['payment_method'] ?? 'cod';
+$user = Auth::user();
+$order = \App\Models\Order::create([
+    'user_id' => Auth::id(),
+    'address_id' => $savedAddress->id,
 
-                    'staff_id' => $staffId, // ✅ correct placement
-                    'status' => 'pending',
-                    'subtotal' => 0,
-                    'total_amount' => 0,
-                    'discount_amount' => $input['discount'] ?? 0,
+    'staff_id' => $staffId,
+    'status' => 'pending',
+    'subtotal' => 0,
+    'total_amount' => 0,
+    'discount_amount' => $input['discount'] ?? 0,
+    'email' => $user->email,
 
-                    'first_name' => $savedAddress->first_name,
-                    'last_name' => $savedAddress->last_name,
-                    'phone' => $savedAddress->phone,
-                    'address' => $savedAddress->address,
-                    'city' => $savedAddress->city,
-                    'zip' => $savedAddress->zip,
-                    'state' => $address['state'] ?? '',
+    'first_name' => $savedAddress->first_name,
+    'last_name' => $savedAddress->last_name,
+    'phone' => $savedAddress->phone,
+    'address' => $savedAddress->address,
+    'city' => $savedAddress->city,
+    'zip' => $savedAddress->zip,
+    'state' => $address['state'] ?? '',
 
-$paymentMethod = $input['payment_method'] ?? 'cod',
-'payment_method' => $paymentMethod,
-'payment_status' => ($paymentMethod === 'online') ? 'paid' : 'pending',                ]);
+    'payment_method' => $paymentMethod,
+    'payment_status' => ($paymentMethod === 'online') ? 'paid' : 'pending',
+]);
 
-                // ✅ Process each cart item
                 foreach ($cartItems as $item) {
 
                     $variant = \App\Models\ProductVariant::where([
@@ -220,13 +222,25 @@ $paymentMethod = $input['payment_method'] ?? 'cod',
                         throw new \Exception('Stock not available');
                     }
 
-                    $price = $variant->price;
-                    $total = $price * $item['qty'];
+                   $variant = \App\Models\ProductVariant::where([
+    'product_id' => $item['id'],
+    'color_id' => $item['color_id'],
+    'size' => $item['size']
+])->first();
 
-                    // ✅ Add to subtotal
+if (!$variant) {
+    throw new \Exception('Invalid product variant');
+}
+
+$price = $variant->price ?? \App\Models\Product::find($item['id'])->price;
+
+if (!$price) {
+    throw new \Exception('Price not found');
+}
+
+$total = $price * $item['qty'];
                     $subtotal += $total;
 
-                    // ✅ Create order item
                     \App\Models\OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $item['id'],
@@ -239,11 +253,9 @@ $paymentMethod = $input['payment_method'] ?? 'cod',
                         'size' => $item['size'] ?? null,
                     ]);
 
-                    // ✅ Reduce stock ONCE
                     $variant->decrement('stock', $item['qty']);
                 }
 
-                // ✅ Final totals
                 $discount = $input['discount'] ?? 0;
                 $finalTotal = $subtotal;
                 $order->update([
@@ -251,7 +263,6 @@ $paymentMethod = $input['payment_method'] ?? 'cod',
                     'total_amount' => $finalTotal,
                 ]);
 
-                // ✅ Referral tracking
                 if ($staffId) {
                     ReferralTracking::create([
                         'staff_id' => $staffId,

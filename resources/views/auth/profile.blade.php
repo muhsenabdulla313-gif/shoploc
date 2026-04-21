@@ -43,25 +43,232 @@
           </div>
         </div>
       </div>
+
       <div class="pf-info-item">
-  <label class="pf-label">My Addresses:</label>
+        <label class="pf-label">My Addresses:</label>
 
-  @foreach(Auth::user()->addresses as $addr)
-    <div class="pf-info-value" style="margin-bottom:8px;">
-      {{ $addr->address }}, {{ $addr->city }} - {{ $addr->zip }}
+        @foreach(Auth::user()->addresses as $addr)
+          <div class="pf-info-value" style="margin-bottom:10px;">
+
+            {{ $addr->address }}, {{ $addr->city }} - {{ $addr->zip }}
+
+            <div style="margin-top:8px; display:flex; gap:6px;">
+
+              <!-- EDIT BUTTON -->
+              <a href="#" class="pf-btn pf-btn-ghost editAddressBtn" style="min-width:auto; padding:6px 10px;"
+                data-id="{{ $addr->id }}" data-address="{{ $addr->address }}" data-city="{{ $addr->city }}"
+                data-state="{{ $addr->state }}" data-zip="{{ $addr->zip }}" data-phone="{{ $addr->phone }}"
+                data-bs-toggle="modal" data-bs-target="#editAddressModal">
+                ✏️ Edit
+              </a>
+
+              <!-- DELETE BUTTON -->
+              <form action="{{ route('address.delete', $addr->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <button class="pf-btn pf-btn-danger" style="min-width:auto; padding:6px 10px;">
+                  🗑 Delete
+                </button>
+              </form>
+
+            </div>
+          </div>
+        @endforeach
+
+        <!-- ADD BUTTON -->
+        <a href="#" class="pf-btn pf-btn-ghost" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+          + Add Address
+        </a>
+      </div>
     </div>
-  @endforeach
+  </div>
 
-  <a href="/add-address" class="pf-btn pf-btn-ghost">
-    + Add Address
-  </a>
-</div>
+
+  <div class="modal fade" id="addAddressModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Add Address</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form action="{{ route('address.store') }}" method="POST">
+          @csrf
+
+          <div class="modal-body">
+
+            <div class="row">
+              <div class="col-6">
+                <label class="form-label">First Name</label>
+                <input type="text" name="first_name" class="form-control custom-input" required>
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">Last Name</label>
+                <input type="text" name="last_name" class="form-control custom-input">
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label">Address</label>
+              <input type="text" name="address" class="form-control custom-input" required>
+            </div>
+
+            <div class="row mt-3">
+              <div class="col-6">
+                <label class="form-label">City</label>
+                <input type="text" name="city" class="form-control custom-input" required>
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">State</label>
+                <input type="text" name="state" class="form-control custom-input" required>
+              </div>
+            </div>
+
+            <div class="row mt-3">
+              <div class="col-6">
+                <label class="form-label">Zip Code</label>
+                <input type="text" name="zip" class="form-control custom-input" required>
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">Phone</label>
+                <input type="text" name="phone" class="form-control custom-input" required>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-dark">Save</button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editAddressModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Address</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <form id="editAddressForm" method="POST">
+          @csrf
+
+          <div class="modal-body">
+
+            <div class="row">
+              <div class="col-6">
+                <label class="form-label">First Name</label>
+                <input type="text" name="first_name" id="edit_first_name" class="form-control custom-input">
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">Last Name</label>
+                <input type="text" name="last_name" id="edit_last_name" class="form-control custom-input">
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label">Address</label>
+              <input type="text" name="address" id="edit_address" class="form-control custom-input">
+            </div>
+
+            <div class="row mt-3">
+              <div class="col-6">
+                <label class="form-label">City</label>
+                <input type="text" name="city" id="edit_city" class="form-control custom-input">
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">State</label>
+                <input type="text" name="state" id="edit_state" class="form-control custom-input">
+              </div>
+            </div>
+
+            <div class="row mt-3">
+              <div class="col-6">
+                <label class="form-label">Zip Code</label>
+                <input type="text" name="zip" id="edit_zip" class="form-control custom-input">
+              </div>
+
+              <div class="col-6">
+                <label class="form-label">Phone</label>
+                <input type="text" name="phone" id="edit_phone" class="form-control custom-input">
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-dark">Update</button>
+          </div>
+
+        </form>
+
+      </div>
     </div>
   </div>
 @endsection
 
 @push('scripts')
+
+
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll('.editAddressBtn').forEach(button => {
+        button.addEventListener('click', function () {
+
+          let id = this.getAttribute('data-id');
+
+          document.getElementById('edit_first_name').value = this.getAttribute('data-first_name');
+          document.getElementById('edit_last_name').value = this.getAttribute('data-last_name');
+          document.getElementById('edit_address').value = this.getAttribute('data-address');
+          document.getElementById('edit_city').value = this.getAttribute('data-city');
+          document.getElementById('edit_state').value = this.getAttribute('data-state');
+          document.getElementById('edit_zip').value = this.getAttribute('data-zip');
+          document.getElementById('edit_phone').value = this.getAttribute('data-phone');
+
+          document.getElementById('editAddressForm').action = "/update-address/" + id;
+        });
+      });
+    });
+  </script>
   <style>
+    .custom-input {
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ddd;
+      transition: 0.2s;
+    }
+
+    .custom-input:focus {
+      border-color: #000;
+      box-shadow: none;
+    }
+
+    .modal-content {
+      border-radius: 12px;
+    }
+
+    .modal-header {
+      border-bottom: 1px solid #eee;
+    }
+
+    .modal-footer {
+      border-top: 1px solid #eee;
+    }
+
     .pf-page {
       padding: 30px 14px 70px;
       background: #fff;

@@ -1,4 +1,3 @@
-{{-- resources/views/admin/products/index.blade.php --}}
 
 @extends('admin.layout')
 
@@ -7,7 +6,6 @@
 
 @section('content')
     <div class="space-y-6">
-        <!-- Header with Add Button -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h2 class="text-2xl font-bold text-gray-800">All Products</h2>
             <button type="button" onclick="openAddProductModal()"
@@ -18,7 +16,6 @@
 
 
 
-        <!-- Products Table -->
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">

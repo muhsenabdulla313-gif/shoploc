@@ -278,14 +278,14 @@
             if (images.length > 0) {
               mainImage.src = images[0];
               thumbContainer.innerHTML = images.map((img, index) => `
-                                                    <img src="${img}" class="pd-thumb ${index === 0 ? 'active' : ''}" onclick="changeMainImage(this)">
-                                                  `).join('');
+                                                      <img src="${img}" class="pd-thumb ${index === 0 ? 'active' : ''}" onclick="changeMainImage(this)">
+                                                    `).join('');
             }
             else {
               mainImage.src = productImage;
               thumbContainer.innerHTML = `
-                          <img src="${productImage}" class="pd-thumb active" onclick="changeMainImage(this)">
-                        `;
+                            <img src="${productImage}" class="pd-thumb active" onclick="changeMainImage(this)">
+                          `;
             }
           }
         });
@@ -313,14 +313,14 @@
           if (images.length > 0) {
             mainImage.src = images[0];
             thumbContainer.innerHTML = images.map((img, index) => `
-                                                  <img src="${img}" class="pd-thumb ${index === 0 ? 'active' : ''}" onclick="changeMainImage(this)">
-                                                `).join('');
+                                                    <img src="${img}" class="pd-thumb ${index === 0 ? 'active' : ''}" onclick="changeMainImage(this)">
+                                                  `).join('');
           }
           else {
             mainImage.src = productImage;
             thumbContainer.innerHTML = `
-                          <img src="${productImage}" class="pd-thumb active" onclick="changeMainImage(this)">
-                        `;
+                            <img src="${productImage}" class="pd-thumb active" onclick="changeMainImage(this)">
+                          `;
           }
         }
         renderSizesByColor(colorId);
@@ -398,11 +398,11 @@
       sizes.forEach(v => {
         const disabled = v.stock <= 0 ? 'disabled' : '';
         container.innerHTML += `
-                                              <label class="pd-size ${disabled ? 'disabled' : ''}">
-                                                <input type="radio" name="productSize" value="${v.size}" ${disabled}>
-                                                ${v.size}
-                                              </label>
-                                            `;
+                                                <label class="pd-size ${disabled ? 'disabled' : ''}">
+                                                  <input type="radio" name="productSize" value="${v.size}" ${disabled}>
+                                                  ${v.size}
+                                                </label>
+                                              `;
       });
 
       attachSizeEvents();
@@ -577,18 +577,18 @@
       if (existingPopup) existingPopup.remove();
 
       const popupHtml = `
-                                            <div id="cartVerificationPopup" class="cart-verification-popup">
-                                              <div class="cart-verification-content">
-                                                <div class="cart-verification-icon">✓</div>
-                                                <h3 class="cart-verification-title">Added to Cart!</h3>
-                                                <p class="cart-verification-message">${productName} (${quantity}) has been added to your cart successfully.</p>
-                                                <div class="cart-verification-actions">
-                                                  <button class="cart-verification-btn continue" onclick="closeCartVerificationPopup()">Continue Shopping</button>
-                                                  <button class="cart-verification-btn view-cart" onclick="viewCartAndClose()">View Cart</button>
+                                              <div id="cartVerificationPopup" class="cart-verification-popup">
+                                                <div class="cart-verification-content">
+                                                  <div class="cart-verification-icon">✓</div>
+                                                  <h3 class="cart-verification-title">Added to Cart!</h3>
+                                                  <p class="cart-verification-message">${productName} (${quantity}) has been added to your cart successfully.</p>
+                                                  <div class="cart-verification-actions">
+                                                    <button class="cart-verification-btn continue" onclick="closeCartVerificationPopup()">Continue Shopping</button>
+                                                    <button class="cart-verification-btn view-cart" onclick="viewCartAndClose()">View Cart</button>
+                                                  </div>
                                                 </div>
                                               </div>
-                                            </div>
-                                          `;
+                                            `;
 
       document.body.insertAdjacentHTML('beforeend', popupHtml);
       setTimeout(() => { closeCartVerificationPopup(); }, 3000);
@@ -669,25 +669,25 @@
       const name = (p.name || '').replace(/'/g, "\\'");
       const price = Number(p.price || 0).toFixed(2);
       const image = p.image || 'https://placehold.co/600x800?text=No+Image';
-      const category = (p.category || '').replace(/'/g, "\\'");
+      const category = String(p.category || '').replace(/'/g, "\\'");
       const active = isWishlisted(id) ? 'active' : '';
       const heart = isWishlisted(id) ? '♥' : '♡';
 
       return `
-                                            <div class="pd-card">
-                                              <div class="img">
-                                                <a href="/product/${id}">
-                                                  <img src="${image}" alt="${name}" onerror="this.onerror=null;this.src='https://placehold.co/600x800?text=No+Image';">
-                                                </a>
-                                                <button class="pd-wbtn ${active}" type="button"
-                                                  onclick="event.preventDefault(); event.stopPropagation(); toggleCardWishlist(this,'${id}','${name}','${price}','${image}','${category}')">${heart}</button>
+                                              <div class="pd-card">
+                                                <div class="img">
+                                                  <a href="/product/${id}">
+                                                    <img src="${image}" alt="${name}" onerror="this.onerror=null;this.src='https://placehold.co/600x800?text=No+Image';">
+                                                  </a>
+                                                  <button class="pd-wbtn ${active}" type="button"
+                                                    onclick="event.preventDefault(); event.stopPropagation(); toggleCardWishlist(this,'${id}','${name}','${price}','${image}','${category}')">${heart}</button>
+                                                </div>
+                                                <div class="meta">
+                                                  <a href="/product/${id}"><p class="name" title="${name}">${name}</p></a>
+                                                  <div class="p">₹${price}</div>
+                                                </div>
                                               </div>
-                                              <div class="meta">
-                                                <a href="/product/${id}"><p class="name" title="${name}">${name}</p></a>
-                                                <div class="p">₹${price}</div>
-                                              </div>
-                                            </div>
-                                          `;
+                                            `;
     }
 
     function displayRecentlyViewed() {
@@ -701,35 +701,35 @@
       container.innerHTML = recentlyViewed.filter(p => p && p.id).map(railCardHTML);
     }
 
- function loadRelatedProducts() {
-  console.log("🔥 Related products function called");
+    function loadRelatedProducts() {
+      console.log("🔥 Related products function called");
 
-  const cat = encodeURIComponent(productCategory);
-  const pid = encodeURIComponent(productId);
+      const cat = encodeURIComponent(productCategory);
+      const pid = encodeURIComponent(productId);
 
-  console.log("Category:", cat, "Product:", pid);
+      console.log("Category:", cat, "Product:", pid);
 
-  fetch(`/api/products/related/${cat}/${pid}`)
-    .then(res => res.json())
-    .then(data => {
-      console.log("API Response:", data);
+      fetch(`/products/related/${cat}/${pid}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log("API Response:", data);
 
-      const container = document.getElementById('relatedProducts');
+          const container = document.getElementById('relatedProducts');
 
-      if (!container) return;
+          if (!container) return;
 
-      if (data.success && data.products.length > 0) {
-        container.innerHTML = data.products.map(railCardHTML).join('');
-      } else {
-        container.innerHTML = '<p style="color:#777;">No related products found.</p>';
-      }
-    })
-    .catch(err => {
-      console.error("Related Products Error:", err);
-      document.getElementById('relatedProducts').innerHTML =
-        '<p style="color:red;">Error loading related products</p>';
-    });
-}
+          if (data.success && data.products.length > 0) {
+            container.innerHTML = data.products.map(railCardHTML).join('');
+          } else {
+            container.innerHTML = '<p style="color:#777;">No related products found.</p>';
+          }
+        })
+        .catch(err => {
+          console.error("Related Products Error:", err);
+          document.getElementById('relatedProducts').innerHTML =
+            '<p style="color:red;">Error loading related products</p>';
+        });
+    }
   </script>
 
   @include('footer')

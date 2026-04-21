@@ -7,9 +7,9 @@
 
     <!-- Desktop Links -->
     <nav class="ashion-links" id="desktopLinks">
-      <a href="{{ url('/') }}" class="navlink">Home</a>
-      <a href="{{ url('/womens') }}" class="navlink">Women</a>
-      <a href="{{ url('/contact') }}" class="navlink">Contact</a>
+      <a href="{{route('home')}}" class="navlink">Home</a>
+      <a href="{{route('shop')}}" class="navlink">shop</a>
+      <a href="{{route('contact')}}" class="navlink">Contact</a>
     </nav>
 
     <!-- Desktop Search -->

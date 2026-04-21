@@ -8,28 +8,26 @@
         <div class="checkout-left">
 
           <!-- ✅ SAVED ADDRESS UI -->
-          <div id="savedAddressContainer" style="display:none;">
-            <div class="saved-address-box">
-              <p id="savedAddressText"></p>
+        
+     @if($addresses->count())
+  @foreach($addresses as $addr)
+    <div style="margin-bottom:8px;">
+      <label>
+        <input type="radio" name="address_id"
+          value="{{ $addr->id }}"
+          data-first_name="{{ $addr->first_name }}"
+          data-last_name="{{ $addr->last_name }}"
+          data-phone="{{ $addr->phone }}"
+          data-address="{{ $addr->address }}"
+          data-city="{{ $addr->city }}"
+          data-zip="{{ $addr->zip }}">
 
-              <button class="btn-flat btn-flat--primary" id="useSavedBtn">
-                Use This Address
-              </button>
-
-              <button class="btn-flat" id="addNewAddressBtn" style="margin-left:10px;">
-                Add New Address
-              </button>
-            </div>
-          </div>
-       @if($addresses->count())
-    @foreach($addresses as $addr)
-        <div>
-            <input type="radio" name="address_id" value="{{ $addr->id }}">
-            {{ $addr->address }}, {{ $addr->city }}
-        </div>
-    @endforeach
+        {{ $addr->address }}, {{ $addr->city }}
+      </label>
+    </div>
+  @endforeach
 @else
-    <p>No saved addresses. Please add a new one.</p>
+  <p>No saved addresses. Please add a new one.</p>
 @endif
           <!-- ✅ ADDRESS FORM -->
           <div id="addressFormContainer">
@@ -87,9 +85,7 @@
                 </div>
               </div>
 
-              <button class="btn-flat btn-flat--primary" type="submit">
-                Confirm Order
-              </button>
+          
 
             </form>
           </div>
@@ -148,218 +144,160 @@
 
 
 @push('scripts')
-  <script>
-    let TAX = 00;
+ <script>
+document.addEventListener('DOMContentLoaded', () => {
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadSavedAddress();
-      renderSummary();
+  renderSummary();
 
-      const form = document.getElementById('checkoutForm');
-      if (form) {
-        form.addEventListener('submit', handlePlaceOrder);
-      }
+  const form = document.getElementById('checkoutForm');
+
+  // ✅ AUTO FILL WHEN ADDRESS SELECTED
+  document.querySelectorAll('input[name="address_id"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+
+      form.querySelector('[name="first_name"]').value = this.dataset.first_name || '';
+      form.querySelector('[name="last_name"]').value = this.dataset.last_name || '';
+      form.querySelector('[name="phone"]').value = this.dataset.phone || '';
+      form.querySelector('[name="address"]').value = this.dataset.address || '';
+      form.querySelector('[name="city"]').value = this.dataset.city || '';
+      form.querySelector('[name="zip"]').value = this.dataset.zip || '';
+
+      // 🔒 make readonly
+      form.querySelectorAll('input[type="text"], input[type="tel"]').forEach(input => {
+        input.readOnly = true;
+      });
+
+    });
+  });
+
+  // ✅ ENABLE INPUTS IF USER WANTS NEW ADDRESS
+  form.addEventListener('reset', () => {
+    form.querySelectorAll('input').forEach(input => {
+      input.readOnly = false;
+      input.value = '';
     });
 
- 
+    document.querySelectorAll('input[name="address_id"]').forEach(r => r.checked = false);
+  });
 
-    // ✅ money helper
-    function money(n) { return '$' + Number(n).toFixed(2); }
+  form.addEventListener('submit', handlePlaceOrder);
+});
 
-    // ✅ shipping label helper (0 => Free)
-    function shippingLabel(amount) {
-      const a = Number(amount || 0);
-      if (a <= 0) return 'Free';
-      return money(a);
-    }
-    function loadSavedAddress() {
-      const saved = localStorage.getItem('checkoutAddress');
 
-      const formContainer = document.getElementById('addressFormContainer');
-      const savedContainer = document.getElementById('savedAddressContainer');
-      const savedText = document.getElementById('savedAddressText');
+// 💰 MONEY FORMAT
+function money(n) {
+  return '₹' + Number(n).toFixed(2);
+}
 
-      if (!saved) {
-        formContainer.style.display = 'block';
-        savedContainer.style.display = 'none';
-        return;
-      }
 
-      const data = JSON.parse(saved);
+// 🛒 GET CART
+function getCart() {
+  try {
+    return JSON.parse(localStorage.getItem('cart') || '[]');
+  } catch {
+    return [];
+  }
+}
 
-      formContainer.style.display = 'none';
-      savedContainer.style.display = 'block';
 
-      savedText.innerHTML = `
-      <strong>${data.first_name} ${data.last_name}</strong><br>
-      ${data.phone}<br>
-      ${data.address}, ${data.city} - ${data.zip}
-    `;
+// 🧾 RENDER SUMMARY
+function renderSummary() {
+  const cart = getCart();
+  const wrap = document.getElementById('summaryItems');
 
-      document.getElementById('useSavedBtn').onclick = function () {
-        formContainer.style.display = 'block';
-        savedContainer.style.display = 'none';
+  if (!cart.length) {
+    window.location.href = '/cart';
+    return;
+  }
 
-        const form = document.getElementById('checkoutForm');
-        Object.keys(data).forEach(key => {
-          const input = form.querySelector(`[name="${key}"]`);
-          if (input) input.value = data[key];
-        });
-      };
+  let subtotal = 0;
 
-      document.getElementById('addNewAddressBtn').onclick = function () {
-        formContainer.style.display = 'block';
-        savedContainer.style.display = 'none';
+  wrap.innerHTML = cart.map(item => {
+    const qty = Number(item.qty || 1);
+    const price = Number(item.price || 0);
 
-        document.getElementById('checkoutForm').reset();
-      };
-    }
-    function getCart() {
-      try {
-        const c = JSON.parse(localStorage.getItem('cart') || '[]');
-        return Array.isArray(c) ? c : [];
-      } catch (e) {
-        return [];
-      }
-    }
+    subtotal += price * qty;
 
-    function setCart(cart) {
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new CustomEvent('cartUpdated'));
-    }
-
-    function renderSummary() {
-      const cart = getCart();
-      const wrap = document.getElementById('summaryItems');
-
-      if (!cart.length) {
-        window.location.href = '/cart';
-        return;
-      }
-
-      let subtotal = 0;
-
-      wrap.innerHTML = cart.map((item, idx) => {
-        const qty = Number(item.qty || 1);
-        const price = Number(item.price || 0);
-        subtotal += price * qty;
-
-        // ✅ shipping charge from DB stored in cart item:
-        // support multiple keys just in case:
-        const ship = Number(item.shipping_charge ?? item.delivery_charge ?? item.shipping ?? 0);
-
-        const imgSrc = item.image
+   const imgSrc = item.image
           ? (String(item.image).includes('://') ? item.image : (String(item.image).startsWith('/') ? item.image : '/storage/' + item.image))
           : 'https://placehold.co/56x56?text=IMG';
 
-        return `
-        <div class="item">
-          <img src="${imgSrc}" alt="${(item.name || 'Item').replace(/"/g, '&quot;')}" />
-          <div>
-            <p class="item-title">${item.name || 'Product'}</p>
-
-
-
-            <div class="qty">
-    <span>Quantity: ${qty}</span>
-  </div>
-          </div>
-          <div class="item-price">${money(price)}</div>
+    return `
+      <div class="item">
+        <img src="${imgSrc}" />
+        <div>
+          <p class="item-title">${item.name}</p>
+          <small>Qty: ${qty}</small>
         </div>
-      `;
-      }).join('');
+          <div class="item-price">${money(price)}</div>
+      </div>
+    `;
+  }).join('');
 
-      updateTotals(subtotal);
+  updateTotals(subtotal);
+}
+
+
+// 🧮 TOTAL
+function updateTotals(subtotal) {
+  const total = subtotal;
+
+  document.getElementById('subtotalVal').textContent = money(subtotal);
+  document.getElementById('shippingVal').textContent = 'Free';
+  document.getElementById('taxVal').textContent = money(0);
+  document.getElementById('totalVal').textContent = money(total);
+}
+
+
+// 🚀 PLACE ORDER
+function handlePlaceOrder(e) {
+  e.preventDefault();
+
+  const cart = getCart();
+  if (!cart.length) return alert("Cart empty");
+
+  const formData = new FormData(e.target);
+  const addressId = formData.get('address_id');
+  const paymentMethod = formData.get('payment_method');
+
+  const payload = {
+    cart: cart,
+    payment_method: paymentMethod,
+    address_id: addressId,
+    address: Object.fromEntries(formData.entries()),
+    discount: 0
+  };
+
+  fetch('/checkout', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Order placed successfully');
+      localStorage.removeItem('cart');
+      window.location.href = "/success";
+    } else {
+      alert(data.message);
     }
+  })
+  .catch(() => alert('Something went wrong'));
+}
 
-    function updateTotals(subtotal) {
 
-      const totalShipping = 0;
-      const TAX = 0;
 
-      const total = subtotal + totalShipping + TAX;
 
-      document.getElementById('subtotalVal').textContent = money(subtotal);
-
-      document.getElementById('shippingVal').textContent = 'Free'; // ✅ always free
-      document.getElementById('taxVal').textContent = money(0);
-      document.getElementById('totalVal').textContent = money(total);
-    }
-
-    function changeQty(index, delta) {
-      const cart = getCart();
-      if (!cart[index]) return;
-
-      cart[index].qty = (Number(cart[index].qty || 1)) + delta;
-      if (cart[index].qty <= 0) cart.splice(index, 1);
-
-      setCart(cart);
-      renderSummary();
-    }
-
-    function removeItem(index) {
-      const cart = getCart();
-      cart.splice(index, 1);
-      setCart(cart);
-      renderSummary();
-    }
-
-    function handlePlaceOrder(e) {
-      e.preventDefault();
-
-      const cart = getCart();
-      if (!cart.length) {
-        alert("Cart empty");
-        return;
-      }
-      const formData = new FormData(e.target);
-      const addressId = formData.get('address_id');
-
-      const address = Object.fromEntries(formData.entries()); 
-const paymentMethod = formData.get('payment_method'); // ✅ ADD
-
-      const staffId = localStorage.getItem('staff_id');
-      fetch('/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({
-          cart: cart,
-          address: address,
-          address_id: addressId,
-          staff_id: staffId,
-              payment_method: paymentMethod,
-
-          discount: 0
-        })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            alert('Order placed successfully');
-
-            localStorage.removeItem('cart');
-            localStorage.removeItem('staff_id');
-
-            window.location.href = "/success";
-          } else {
-            alert(data.message);
-          }
-        })
-        .catch(() => alert('Something went wrong'));
-    }
-
-  </script>
-
-  {{-- Store referral code in localStorage when checkout page loads --}}
   @if(session('referral_code'))
-    <script>
+    
       document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('referral_code', '{{ session('referral_code') }}');
       });
-    </script>
+    
   @endif
-
+</script>
 @endpush

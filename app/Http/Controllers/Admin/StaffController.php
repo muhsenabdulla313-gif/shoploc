@@ -103,7 +103,7 @@ class StaffController extends Controller
             $staff->save();
         }
 
-        return redirect()->route('admin.staff.index')->with('success', 'Staff member updated successfully!');
+        return redirect()->route('admin.staff.manage')->with('success', 'Staff member updated successfully!');
     }
 
     public function destroy($id)
@@ -111,7 +111,7 @@ class StaffController extends Controller
         $staff = Staff::findOrFail($id);
         $staff->delete();
 
-        return redirect()->route('admin.staff.index')->with('success', 'Staff member deleted successfully!');
+        return redirect()->route('admin.staff.manage')->with('success', 'Staff member deleted successfully!');
     }
 
     public function sendMessage(Request $request)
@@ -169,7 +169,25 @@ class StaffController extends Controller
     }
     public function manage()
     {
-        $staffMembers = Staff::all();
+
+
+    $search = request('search');
+
+    $query = Staff::query();
+
+    // ✅ Apply search filter
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'LIKE', "%{$search}%")
+              ->orWhere('district', 'LIKE', "%{$search}%")
+              ->orWhere('village', 'LIKE', "%{$search}%");
+        });
+    }
+
+
+
+
+    $staffMembers = $query->get();
 
         foreach ($staffMembers as $staff) {
             $referredOrders = \App\Models\Order::where('referral_code', $staff->referral_code)->get();

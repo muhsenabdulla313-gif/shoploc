@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\Category;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -23,15 +24,24 @@ class ProductController extends Controller
     {
         $query = $request->input('search');
 
-        if ($query) {
-            $products = Product::where('name', 'LIKE', "%{$query}%")
-                ->orWhere('category', 'LIKE', "%{$query}%")
-                ->orWhere('subcategory', 'LIKE', "%{$query}%")
-                ->orderBy('id', 'desc')
-                ->get();
-        } else {
-            $products = Product::orderBy('id', 'desc')->get();
-        }
+        $products = Product::with('category.parent')
+            ->when($query, function ($q) use ($query) {
+                $q->where(function ($subQuery) use ($query) {
+                    $subQuery->where('name', 'LIKE', "%{$query}%")
+
+                        // Search category name
+                        ->orWhereHas('category', function ($q2) use ($query) {
+                            $q2->where('name', 'LIKE', "%{$query}%");
+                        })
+
+                        // Search parent category name
+                        ->orWhereHas('category.parent', function ($q3) use ($query) {
+                            $q3->where('name', 'LIKE', "%{$query}%");
+                        });
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->get();
 
         return view('shop', compact('products'));
     }
@@ -91,32 +101,50 @@ class ProductController extends Controller
 public function getRelatedProducts($categoryId, $excludeId)
 {
     try {
-        $category = \App\Models\Category::find($categoryId);
+        $category = Category::find($categoryId);
 
         $categoryIds = [$categoryId];
 
-        // If category has parent → get sibling categories
         if ($category && $category->parent_id) {
-            $siblings = \App\Models\Category::where('parent_id', $category->parent_id)
+            $categoryIds = Category::where('parent_id', $category->parent_id)
                 ->pluck('id')
                 ->toArray();
-
-            $categoryIds = $siblings;
         }
 
         $relatedProducts = Product::where('id', '!=', $excludeId)
-            ->where('status', 'active')
-            ->whereIn('category_id', $categoryIds)
+            ->where('status', 'active') // ✅ IMPORTANT
+            ->where(function ($query) use ($categoryIds, $categoryId) {
+                $query->whereIn('category_id', $categoryIds)
+                      ->orWhere('category_id', $categoryId);
+            })
             ->latest()
-            ->limit(10)
+            ->take(10)
             ->get();
 
-        $relatedProducts->transform(function ($p) {
-            $p->image = $p->image
-                ? asset('storage/' . $p->image)
-                : 'https://placehold.co/600x800?text=No+Image';
-            return $p;
-        });
+    $relatedProducts->transform(function ($p) {
+
+    $img = 'https://placehold.co/600x800?text=No+Image';
+
+    if ($p->colors->count()) {
+        $firstColor = $p->colors->first();
+
+        $firstImage = $p->images
+            ->where('color_id', $firstColor->id)
+            ->first();
+
+        if ($firstImage && $firstImage->image) {
+            $img = asset('storage/' . $firstImage->image);
+        }
+    }
+
+    return [
+        'id' => $p->id,
+        'name' => $p->name,
+        'price' => $p->price,
+        'image' => $img, // ✅ FIXED
+        'category' => $p->category_id,
+    ];
+});
 
         return response()->json([
             'success' => true,
@@ -132,3 +160,4 @@ public function getRelatedProducts($categoryId, $excludeId)
     }
 }
 }
+

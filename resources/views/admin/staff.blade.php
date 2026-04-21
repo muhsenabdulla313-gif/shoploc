@@ -18,7 +18,18 @@
                 <span class="block sm:inline">{{ session('error') }}</span>
             </div>
         @endif
+<form method="GET" action="{{ route('admin.staff.manage') }}" class="mb-4">
+    <div class="flex gap-2">
+        <input type="text" name="search" value="{{ request('search') }}"
+            placeholder="Search by name, district, village..."
+            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
 
+        <button type="submit"
+            class="bg-blue-600 text-white px-4 py-2 rounded-md">
+            Search
+        </button>
+    </div>
+</form>
         <div class="bg-white rounded-xl p-6 shadow-md">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Staff Members</h2>
@@ -69,7 +80,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $staff->purchases_referred ?? 0 }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{{ number_format($staff->total_earnings ?? 0, 2) }}</td>
 
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $staff->created_at->format('M d, Y') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $staff->created_at ? $staff->created_at->format('M d, Y') : '-' }}</td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="#"
@@ -90,8 +101,7 @@
                                 data-address="{{ $staff->address }}"
                                 data-district="{{ $staff->district }}"
                                 data-pincode="{{ $staff->pincode }}"
-                                data-created-at="{{ $staff->created_at->format('M d, Y') }}">
-                                    <i class="fas fa-eye"></i>
+data-created-at="{{ $staff->created_at ? $staff->created_at->format('M d, Y') : '-' }}"                                    <i class="fas fa-eye"></i>
                                 </a>
 
                                 <a href="#"

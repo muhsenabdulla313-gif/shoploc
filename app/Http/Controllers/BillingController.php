@@ -9,7 +9,7 @@ class BillingController extends Controller
 {
     public function login()
     {
-        if (auth()->guard('staff')->check()) {
+        if (auth()->guard('billing')->check()) {
             return redirect('/billing');
         }
         return view('billing.login');
@@ -24,7 +24,7 @@ class BillingController extends Controller
             'password' => ['required'],
         ]);
 
-        if (auth()->guard('staff')->attempt($credentials)) {
+        if (auth()->guard('billing')->attempt($credentials)) {
             request()->session()->regenerate();
             return redirect()->intended('/billing');
         }
@@ -35,7 +35,7 @@ class BillingController extends Controller
     }
     public function logout()
     {
-        auth()->guard('staff')->logout();
+        auth()->guard('billing')->logout();
         request()->session()->invalidate();
         request()->session()->regenerateToken();
 
